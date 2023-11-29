@@ -365,12 +365,15 @@ const unfollowUser = async (req, res) => {
 const searchUser = async (req, res) => {
     try {
         const nickname = req.query.nickname;
+        const loggedInUserId = req.user._id; // 로그인한 사용자의 ID
+
         if (!nickname) {
             return res.status(400).json({ success: false, message: 'No nickname provided for search.' });
         }
         
-        // 닉네임을 기준으로 사용자 검색
+        // 닉네임을 기준으로 로그인 한 사용자를 제외한 사용자 검색
         const users = await User.find({ 
+            _id: { $ne: loggedInUserId }, // 로그인 한 사용자 제외
             nickname: { $regex: nickname, $options: 'i' } // 대소문자 구분 없는 검색
         }).select('_id nickname profileImage statusMessage');
         
@@ -380,6 +383,7 @@ const searchUser = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Internal Server Error.' });
     }
 };
+
 
 // 차단 목록 api
 const blockedList = async (req, res) => {

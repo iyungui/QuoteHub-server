@@ -80,8 +80,8 @@ router.post('/auth/apple/callback', async (req, res) => {
             await user.save();
         }
 
-        const accessToken = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '2h' });
-        const refreshToken = jwt.sign({ _id: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
+        const accessToken = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '1d' });
+        const refreshToken = jwt.sign({ _id: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: '14d' });
 
         const responseData = {
             user: user,
@@ -154,7 +154,7 @@ router.post('/renew-access-token', async (req, res) => {
         // Verify the JWTRefreshToken
         const decodedRefreshToken = jwt.verify(JWTRefreshToken, REFRESH_TOKEN_SECRET);
 
-        const newAccessToken = jwt.sign({ _id: decodedRefreshToken._id }, JWT_SECRET, { expiresIn: '2h' });
+        const newAccessToken = jwt.sign({ _id: decodedRefreshToken._id }, JWT_SECRET, { expiresIn: '1d' });
         
         res.json({ accessToken: newAccessToken });  // Save in iOS keychain
 
@@ -179,21 +179,23 @@ router.post('/validate-token', async (req, res) => {
     try {
         // 액세스 토큰 검증
         const decodedAccessToken = jwt.verify(accessToken, JWT_SECRET);
-        return res.status(200).send({ valid: true, message: "Access token is still valid." });  // 액세스 토큰 유효하다고 응답
+        return res.status(200).send({ valid: true, message: "Access token is still valid." });
     } catch (ex) {
         if (ex.name === 'TokenExpiredError' || ex.name === 'JsonWebTokenError') {
             try {
                 // 액세스 토큰이 만료되거나 유효하지 않은 경우, 리프레시 토큰 검증
                 const decodedRefreshToken = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
-                const newAccessToken = jwt.sign({ _id: decodedRefreshToken._id }, JWT_SECRET, { expiresIn: '2h' });
-                return res.status(200).send({ valid: false, newAccessToken });
+                const newAccessToken = jwt.sign({ _id: decodedRefreshToken._id }, JWT_SECRET, { expiresIn: '1d' });
+                const newRefreshToken = jwt.sign({ _id: decodedRefreshToken._id }, REFRESH_TOKEN_SECRET, { expiresIn: '14d' });
+                return res.status(200).send({ valid: false, newAccessToken, newRefreshToken });
             } catch (err) {
-                return res.status(401).send({ error: "Invalid or expired refresh token." });    // 재로그인 필요
+                return res.status(401).send({ error: "Invalid or expired refresh token. Please log in again." });
             }
         }
         return res.status(500).send({ error: "Error occurred while validating the access token!" });
     }
 });
+
 
 router.post('/revoke', ensureAuthenticated, async (req, res) => {
     const session = await mongoose.startSession();
@@ -324,7 +326,6 @@ router.get('/list/users', async (req, res) => {
       res.status(500).send('Server error');
     }
 });
-
 
 
 module.exports = router;

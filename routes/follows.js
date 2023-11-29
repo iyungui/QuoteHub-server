@@ -34,7 +34,7 @@ router.patch('/update/:userId', ensureAuthenticated, updateFollowStatus);
 router.delete('/unfollow/:userId', ensureAuthenticated, unfollowUser);
 
 // 사용자 검색 api
-router.get('/user/search', searchUser);
+router.get('/user/search', ensureAuthenticated, searchUser);
 
 // 차단 목록 api
 router.get('/blockedList', ensureAuthenticated, blockedList);
