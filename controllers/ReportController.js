@@ -46,7 +46,7 @@ const getReportUsers = async (req, res) => {
     const reporterId = req.user._id;
 
     try {
-        const userReports = await Report.find({ reporterId, type: 'user'}).populate('targetId');
+        const userReports = await Report.find({ reporterId, type: 'user'}).populate('targetId').select('-refreshToken -appleId -__v');
         res.status(200).send(userReports);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving user reports.', error});
