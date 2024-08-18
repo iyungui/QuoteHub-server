@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 const Book = require('../models/Book');
 
-async function fetchBooksByPage(query, REST_API_KEY, page = 1) {
+async function fetchBooksByPage(query, restAPIKey, page = 1) {
     try {
         const response = await axios.get(`https://dapi.kakao.com/v3/search/book`, {
             params: {
@@ -11,7 +11,7 @@ async function fetchBooksByPage(query, REST_API_KEY, page = 1) {
                 page: page
             },
             headers: {
-                "Authorization": `KakaoAK ${REST_API_KEY}`
+                "Authorization": `KakaoAK ${restAPIKey}`
             }
         });
         return response.data;
@@ -24,10 +24,10 @@ async function fetchBooksByPage(query, REST_API_KEY, page = 1) {
 exports.fetchBookData = async (req, res, next) => {
     const searchQuery = req.query.query;
     const page = parseInt(req.query.page) || 1;
-    const REST_API_KEY = process.env.REST_API_KEY;
+    const restAPIKey = process.env.KAKAO_REST_API_KEY;
 
     try {
-        const kakaoResponse = await fetchBooksByPage(searchQuery, REST_API_KEY, page);
+        const kakaoResponse = await fetchBooksByPage(searchQuery, restAPIKey, page);
 
         // ISBN 배열에서 빈 문자열을 제거합니다.
         kakaoResponse.documents = kakaoResponse.documents.map(doc => ({

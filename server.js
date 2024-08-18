@@ -4,7 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const http = require('http');
 const helmet = require('helmet');
-require('dotenv').config();
+require('dotenv').config({ path: './config/.env' });
 const app = express();
 const server = http.createServer(app);
 
@@ -19,10 +19,7 @@ const reportRoutes = require('./routes/reportRoutes');
 
 // MongoDB 연결 설정
 const MONGO_URI = process.env.MONGO_URI;
-mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect(MONGO_URI)
     .then(() => {
         console.log('MongoDB connected');
     })

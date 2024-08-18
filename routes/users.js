@@ -14,8 +14,8 @@ const ensureAuthenticated = require('../middleware/ensureAuthenticated');
 const axios = require('axios');
 
 // apple-auth
-const JWT_SECRET = process.env.JWT_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET_KEY;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET_KEY;
 
 const path = require('path');
 const AppleAuth = require('apple-auth');
@@ -57,7 +57,7 @@ async function generateUniqueNickname() {
 
 
 // apple login
-router.post('/auth/apple/callback', async (req, res) => {
+router.post('/quotehub/auth/apple/callback', async (req, res) => {
     try {
         const response = await auth.accessToken(req.body.code);
         const idToken = jwt.decode(response.id_token);
