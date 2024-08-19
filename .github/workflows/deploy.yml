@@ -1,0 +1,71 @@
+name: Deploy to cloudtype
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Connect deploy key
+        uses: cloudtype-github-actions/connect@v1
+        with:
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}
+          ghtoken: ${{ secrets.GHP_TOKEN }}
+      - name: Deploy
+        uses: cloudtype-github-actions/deploy@v1
+        with:
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}
+          project: iyungui/quotehub-server
+          stage: main
+          yaml: >
+            name: quotehub-server
+
+            app: node@22
+
+            options:
+              env:
+                - name: NODE_ENV
+                  value: production
+                - name: AWS_ACCESS_KEY_ID
+                  value: AKIAXQIQAHLLXL2YYVM3
+                - name: AWS_SECRET_ACCESS_KEY
+                  value: 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
+                - name: AWS_REGION
+                  value: ap-northeast-2
+                - name: S3_BUCKET_NAME
+                  value: quotehub-s3
+                - name: MONGO_URI
+                  value: mongodb+srv://rsdbddml:x1gStut2jDLe4byu@yungui.t1xxoys.mongodb.net/?retryWrites=true&w=majority&appName=YungUi
+                - name: PORT
+                  value: "3000"
+                - name: KAKAO_REST_API_KEY
+                  value: 7955ef21d99f2e37db7c75a9acb6fdae
+                - name: JWT_SECRET_KEY
+                  value: MIHcAgEBBEIBNjz1nfFHFFFRvZsAJjzyajfK+Fm7q5GlnaP22Rw0uYR5Om4CzRJqZs9EEMVCanadJl/Q/e4IT1tBgg1S+DVd7HmgBwYFK4EEACOhgYkDgYYABAE0fQb6ul6CviMLY2lAX628XALv6Gc/q/LKBEYMkLQJGN5dQ3mWo3k4petJ/9v/q8T2fFaAdycESk9Qwf0xgo9qdgD6yxpKK5bUOZHU1K+DT8I5f4l+UMfI2mIaq4HVBcczqr4fneQMbF3XuYwc0UjRYyo6C3Znxqo+51mPsGC/dyOGBw==
+                - name: REFRESH_TOKEN_SECRET_KEY
+                  value: MIHcAgEBBEIACOPw2moB+nl+JUYmEhKIVdSvFD5bTE2j9f+wYmj/ndVuzyx37RoOuE5bwMiuaj5GX4LGSGhaCKjouSYM8vvINh6gBwYFK4EEACOhgYkDgYYABAE1fwbBqwf45sFcoE802buGe/XZZfAAvFlDoVt8Wai6x5qYjoGKYjy5NeEk/mTTWB4n2VvbU1XNz4C9t1rPR/R3PQAHcO2hN6CrLcKSu1s34ddu0bsXSXqmgMFn6pSRDKcSu/MxjvWXdr6mUVeonlvDWswdz8UZM1wuRGgp3aetXmUrfw==
+                - name: APPLE_CLIENT_ID
+                  value: com.iyungui.QuoteHub-service
+                - name: APPLE_TEAM_ID
+                  value: 285ZKW5MPR
+                - name: APPLE_KEY_ID
+                  value: 4D52P546Y5
+                - name: APPLE_REDIRECT_URI
+                  value: https://port-0-quotehub-server-m015aiy374b6cd11.sel4.cloudtype.app/auth/apple/callback
+                - name: APPLE_PRIVATE_KEY
+                  value: -----BEGIN PRIVATE
+                    KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgbx3/OKeEQDKheoyT\nMyunADyXAodhz9nf6AIrGzbjE9mgCgYIKoZIzj0DAQehRANCAAROyBFarOpGD81L\niQE62PZ+i8KpS69GRRxwIKlxK7mY/3faoUBzdVbAc48BqJW4a28g7pcW3KDqW2TW\noxghnAHb\n-----END
+                    PRIVATE KEY-----
+              ports: 3000
+              install: npm ci
+              start: node server.js
+              healthz: /health
+              buildenv: []
+            context:
+              git:
+                url: git@github.com:${{ github.repository }}.git
+                ref: ${{ github.ref }}
+              preset: node
