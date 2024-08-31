@@ -30,8 +30,8 @@ const appleConfig = {
 };
 
 const privateKey = process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n');
-
 let auth = new AppleAuth(appleConfig, privateKey, 'text');
+
 
 function optionalAuthentication(req, res, next) {
   if (!req.params.userId) {
@@ -115,6 +115,7 @@ router.post("/auth/apple/callback", async (req, res) => {
     res.json(responseData);
   } catch (ex) {
     console.error("Error during Apple authentication:", ex);
+    console.error("Full error details:", JSON.stringify(ex, null, 2)); // 추가 정보 출력
 
     if (ex.response && ex.response.data) {
       console.error("Apple Server Response:", ex.response.data);
