@@ -1,6 +1,7 @@
 const mongoose = require("mongoose"); // ObjectId 검증을 위해 필요
 
 const express = require("express");
+
 const router = express.Router();
 
 const User = require("../models/User");
@@ -13,24 +14,17 @@ const upload = require("../s3Config");
 const ensureAuthenticated = require("../middleware/ensureAuthenticated");
 const axios = require("axios");
 
+
+const fs = require('fs');
+const config = fs.readFileSync('./config/config.json');
+const AppleAuth = require('apple-auth');
+const jwt = require('jsonwebtoken');
+
 // apple-auth
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET_KEY;
 
-const AppleAuth = require("apple-auth");
-const jwt = require("jsonwebtoken");
-require("dotenv").config({ path: "../config/.env" });
-
-const appleConfig = {
-  client_id: process.env.APPLE_CLIENT_ID,
-  team_id: process.env.APPLE_TEAM_ID,
-  key_id: process.env.APPLE_KEY_ID,
-  redirect_uri: process.env.APPLE_REDIRECT_URI,
-  scope: "email",
-};
-
-const privateKey = process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n');
-let auth = new AppleAuth(appleConfig, privateKey, 'text');
+let auth = new AppleAuth(config, fs.readFileSync('./config/AuthKey.p8').toString(), 'text');
 
 
 function optionalAuthentication(req, res, next) {
@@ -67,17 +61,17 @@ async function generateUniqueNickname() {
   }
 }
 
+router.use(express.json());
+router.use(express.urlencoded({ extended: true }));
+
 // apple login
 router.post("/auth/apple/callback", async (req, res) => {
   try {
-    console.log('Received code:', req.body.code); // 클라이언트로부터 받은 code 로그 출력
-    // Apple 서버에 access token 요청
-    const response = await auth.accessToken(req.body.code);
-    console.log('Apple server response:', response); // Apple 서버의 응답 로그 출력
+    console.log( Date().toString() + "GET /auth");
 
-    // Apple에서 받은 id_token 디코딩
+    const response = await auth.accessToken(req.body.code);
     const idToken = jwt.decode(response.id_token);
-    console.log('Decoded idToken:', idToken); // 디코딩된 ID 토큰 로그 출력
+
 
     let user = await User.findOne({ appleId: idToken.sub });
     let isFirstLogin = false;
