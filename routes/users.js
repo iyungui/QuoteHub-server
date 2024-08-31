@@ -73,18 +73,12 @@ router.post("/auth/apple/callback", async (req, res) => {
     console.log('Received code:', req.body.code); // 클라이언트로부터 받은 code 로그 출력
     // Apple 서버에 access token 요청
     const response = await auth.accessToken(req.body.code);
-
-    if (!response.id_token) {
-      throw new Error("Invalid response from Apple, no id_token returned.");
-    }
+    console.log('Apple server response:', response); // Apple 서버의 응답 로그 출력
 
     // Apple에서 받은 id_token 디코딩
     const idToken = jwt.decode(response.id_token);
+    console.log('Decoded idToken:', idToken); // 디코딩된 ID 토큰 로그 출력
 
-    if (!idToken) {
-      throw new Error("Unable to decode id_token from Apple.");
-    }
-    
     let user = await User.findOne({ appleId: idToken.sub });
     let isFirstLogin = false;
 
@@ -120,7 +114,7 @@ router.post("/auth/apple/callback", async (req, res) => {
 
     res.json(responseData);
   } catch (ex) {
-    console.error("Error during Apple authentication:", ex.message);
+    console.error("Error during Apple authentication:", ex);
 
     if (ex.response && ex.response.data) {
       console.error("Apple Server Response:", ex.response.data);
