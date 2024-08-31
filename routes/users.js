@@ -26,7 +26,7 @@ const appleConfig = {
   team_id: process.env.APPLE_TEAM_ID,
   key_id: process.env.APPLE_KEY_ID,
   redirect_uri: process.env.APPLE_REDIRECT_URI,
-  scope: "name email",
+  scope: "email",
 };
 
 const privateKey = process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n');
@@ -70,9 +70,20 @@ async function generateUniqueNickname() {
 // apple login
 router.post("/auth/apple/callback", async (req, res) => {
   try {
+    // Apple 서버에 access token 요청
     const response = await auth.accessToken(req.body.code);
+
+    if (!response.id_token) {
+      throw new Error("Invalid response from Apple, no id_token returned.");
+    }
+
+    // Apple에서 받은 id_token 디코딩
     const idToken = jwt.decode(response.id_token);
 
+    if (!idToken) {
+      throw new Error("Unable to decode id_token from Apple.");
+    }
+    
     let user = await User.findOne({ appleId: idToken.sub });
     let isFirstLogin = false;
 
@@ -98,18 +109,23 @@ router.post("/auth/apple/callback", async (req, res) => {
       expiresIn: "14d",
     });
 
+    // 응답 데이터 생성
     const responseData = {
       user: user,
       isFirstLogin: isFirstLogin,
       JWTAccessToken: accessToken,
       JWTRefreshToken: refreshToken,
     };
+
     res.json(responseData);
   } catch (ex) {
-    console.error("Error during Apple authentication:", ex);
-    res
-      .status(500)
-      .json({ error: "An error occurred during the Apple authentication!" });
+    console.error("Error during Apple authentication:", ex.message);
+
+    if (ex.response && ex.response.data) {
+      console.error("Apple Server Response:", ex.response.data);
+    }
+
+    res.status(500).json({ error: "An error occurred during the Apple authentication!" });
   }
 });
 
