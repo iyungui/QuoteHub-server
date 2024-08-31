@@ -70,6 +70,7 @@ async function generateUniqueNickname() {
 // apple login
 router.post("/auth/apple/callback", async (req, res) => {
   try {
+    console.log('Received code:', req.body.code); // 클라이언트로부터 받은 code 로그 출력
     // Apple 서버에 access token 요청
     const response = await auth.accessToken(req.body.code);
 
