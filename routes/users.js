@@ -70,6 +70,7 @@ router.post("/auth/apple/callback", async (req, res) => {
     console.log( Date().toString() + "GET /auth");
 
     const response = await auth.accessToken(req.body.code);
+    console.log(`Req.body.code: ${req.body.code}`);
     const idToken = jwt.decode(response.id_token);
 
 
