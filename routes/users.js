@@ -24,8 +24,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET_KEY;
 
-let auth = new AppleAuth(config, fs.readFileSync('./config/AuthKey.p8').toString(), 'text');
-
+let auth = new AppleAuth(config, fs.readFileSync('./config/AuthKey_V9RPA6NG6H.p8').toString(), 'text');
 
 function optionalAuthentication(req, res, next) {
   if (!req.params.userId) {
@@ -68,9 +67,9 @@ router.use(express.urlencoded({ extended: true }));
 router.post("/auth/apple/callback", async (req, res) => {
   try {
     console.log( Date().toString() + "GET /auth");
-    console.log('Received code:', req.body.code);
 
     const response = await auth.accessToken(req.body.code);
+    console.log('Received code:', req.body.code);
     const idToken = jwt.decode(response.id_token);
 
 
