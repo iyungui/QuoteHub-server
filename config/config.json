@@ -1,7 +1,0 @@
-{
-  "client_id": "me.iyungui.quotehub",
-  "team_id": "V9RPA6NG6H",
-  "redirect_uri": "https://port-0-quotehub-server-m015aiy374b6cd11.sel4.cloudtype.app/auth/apple/callback",
-  "key_id": "RM8XP2LH2T",
-  "scope": "name email"
-}
