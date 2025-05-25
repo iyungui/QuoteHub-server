@@ -14,7 +14,7 @@ const appleAuthConfig = {
   team_id: process.env.APPLE_TEAM_ID,
   key_id: process.env.APPLE_KEY_ID,
   redirect_uri: process.env.APPLE_REDIRECT_URI || "https://domain/auth/apple/callback",
-  scope: "name email"
+  scope: "name"
 };
 
 // Apple Auth 인스턴스 생성 - private key를 env에서 가져오기
@@ -74,8 +74,7 @@ const appleCallback = async (req, res) => {
       const nickname = await generateUniqueNickname();
       const newUser = {
         appleId: idToken.sub,
-        nickname: nickname,
-        email: idToken.email || `${idToken.sub}@noemail.com`
+        nickname: nickname
       };
 
       user = new User(newUser);
@@ -93,7 +92,6 @@ const appleCallback = async (req, res) => {
     const responseData = {
       user: {
         id: user._id,
-        email: user.email,
         nickname: user.nickname,
         profileImage: user.profileImage,
       },
