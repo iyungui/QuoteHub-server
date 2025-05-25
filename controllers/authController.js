@@ -68,7 +68,6 @@ const appleCallback = async (req, res) => {
     
     const idToken = jwt.decode(response.id_token);
     let user = await User.findOne({ appleId: idToken.sub });
-    let isFirstLogin = false;
 
     if (!user) {
       const nickname = await generateUniqueNickname();
@@ -79,7 +78,6 @@ const appleCallback = async (req, res) => {
 
       user = new User(newUser);
       await user.save();
-      isFirstLogin = true;
     } else {
       user.refreshToken = response.refresh_token;
       await user.save();
@@ -91,14 +89,20 @@ const appleCallback = async (req, res) => {
     // 응답 데이터 생성
     const responseData = {
       user: {
-        id: user._id,
+        _id: user._id,
+        appleId: user.appleId,
         nickname: user.nickname,
-        profileImage: user.profileImage,
+        profileImage: user.profileImage || "",
+        statusMessage: user.statusMessage || null,
+        monthlyReadingGoal: user.monthlyReadingGoal || null,
+        refreshToken: refreshToken,
+        followers: user.followers || [],
+        following: user.following || []
       },
-      isFirstLogin: isFirstLogin,
-      accessToken: accessToken,
-      refreshToken: refreshToken,
+      JWTAccessToken: accessToken,
+      JWTRefreshToken: refreshToken
     };
+
 
     res.status(200).json(responseData);
   } catch (error) {
