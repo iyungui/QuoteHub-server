@@ -2,12 +2,10 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const passport = require("passport");
-require("./config/passport");
-
 const http = require("http");
 const helmet = require("helmet");
 require("dotenv").config({ path: "./config/.env" });
+
 const app = express();
 const server = http.createServer(app);
 
@@ -44,8 +42,8 @@ app.get("/health", (req, res) => {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(passport.initialize());
 
+// Routes
 app.use("/", userRoutes);
 app.use("/book", bookRoutes);
 app.use("/bookstories", bookStoriesRoutes);
@@ -64,7 +62,6 @@ app.use((err, req, res, next) => {
   }
 });
 
-// server connect, Github Actions Test
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
