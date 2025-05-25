@@ -20,7 +20,7 @@ const appleAuthConfig = {
 // Apple Auth 인스턴스 생성 - private key를 env에서 가져오기
 const auth = new AppleAuth(
   appleAuthConfig,
-  process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n'), // 개행 문자 처리
+  process.env.APPLE_PRIVATE_KEY ? process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n') : '',
   'text'
 );
 

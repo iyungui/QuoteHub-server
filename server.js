@@ -4,7 +4,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const http = require("http");
 const helmet = require("helmet");
-require("dotenv").config({ path: "./config/.env" });
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
