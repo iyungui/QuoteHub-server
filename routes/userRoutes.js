@@ -1,46 +1,58 @@
 // routes/userRoutes.js
 const express = require("express");
-const passport = require("passport");
-const { handleSocialLogin } = require("../controllers/authController");
 const router = express.Router();
 
-// Apple 로그인 라우트
-router.get("/auth/apple", passport.authenticate("apple"));
+// Controllers
+const { 
+  appleCallback, 
+  inputProfile, 
+  renewAccessToken, 
+  validateToken, 
+  revokeAccount 
+} = require("../controllers/authController");
 
-router.get(
-  "/auth/apple/callback",
-  passport.authenticate("apple", {
-    failureRedirect: "/login",
-    session: false, // 세션을 사용하지 않으려면 false로 설정
-  }),
-  handleSocialLogin
-);
+const { 
+  getUserProfile, 
+  updateUserProfile, 
+  getUserList 
+} = require("../controllers/userController");
 
-// Google 로그인 라우트
-router.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile"] })
-);
+// Middleware
+const ensureAuthenticated = require("../middleware/ensureAuthenticated");
+const upload = require("../s3Config");
 
-router.get(
-  "/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login",
-    session: false,
-  }),
-  handleSocialLogin
-);
+// 선택적 인증 미들웨어 (userId가 있으면 인증 건너뛰기)
+function optionalAuthentication(req, res, next) {
+  if (!req.params.userId) {
+    return ensureAuthenticated(req, res, next);
+  }
+  next();
+}
 
-// Kakao 로그인 라우트
-router.get("/auth/kakao", passport.authenticate("kakao"));
+// ============= 인증 관련 라우트 =============
+// Apple 로그인 콜백
+router.post("/auth/apple/callback", appleCallback);
 
-router.get(
-  "/auth/kakao/callback",
-  passport.authenticate("kakao", {
-    failureRedirect: "/login",
-    session: false,
-  }),
-  handleSocialLogin
-);
+// 프로필 입력 (첫 로그인 후)
+router.post("/auth/inputProfile", ensureAuthenticated, upload.single("profileImage"), inputProfile);
+
+// JWT 액세스 토큰 갱신
+router.post("/renew-access-token", renewAccessToken);
+
+// 토큰 검증 및 자동 로그인
+router.post("/validate-token", validateToken);
+
+// 계정 탈퇴
+router.post("/revoke", ensureAuthenticated, revokeAccount);
+
+// ============= 사용자 관리 라우트 =============
+// 사용자 프로필 조회 (자신 또는 다른 사용자)
+router.get("/profile/:userId?", optionalAuthentication, getUserProfile);
+
+// 사용자 프로필 업데이트
+router.put("/update", ensureAuthenticated, upload.single("profileImage"), updateUserProfile);
+
+// 사용자 목록 조회 (관리자용)
+router.get("/list/users", getUserList);
 
 module.exports = router;
