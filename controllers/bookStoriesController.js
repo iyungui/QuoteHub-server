@@ -1,9 +1,12 @@
+// controllers/bookStoriesController.js
+
 const mongoose = require('mongoose');
 const BookStory = require('../models/BookStory');
 const Book = require('../models/Book');
 const BookStoryComment = require('../models/BookStoryComment');
 const User = require('../models/User');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
+const { sendSuccess, sendSuccessWithPagination, sendError, sendCountResponse } = require('../utils/responseHelper');
 
 // 북스토리 생성
 exports.createBookStory = async (req, res, next) => {
@@ -40,9 +43,9 @@ exports.createBookStory = async (req, res, next) => {
         .populate('userId', 'nickname profileImage statusMessage')
         .populate('bookId');
 
-        res.status(200).json({ success: true, data: populatedBookStory });
+        return sendSuccess(res, 201, 'BookStory created successfully.', populatedBookStory);
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -53,7 +56,7 @@ exports.getUserBookStoryCount = async (req, res, next) => {
     // 특정 사용자의 ID로 조회
     if (req.params.userId) {
         if (!mongoose.Types.ObjectId.isValid(req.params.userId)) {
-            return res.status(400).json({ success: false, message: 'Invalid user ID' });
+            return sendError(res, 400, 'Invalid user ID format.');
         }
         query.userId = req.params.userId;
     } else {
@@ -62,16 +65,16 @@ exports.getUserBookStoryCount = async (req, res, next) => {
             query.userId = req.user._id;
         } else {
             // 인증된 사용자 정보가 없는 경우 오류 반환
-            return res.status(401).json({ success: false, message: 'No authenticated user found.' });
+            return sendError(res, 401, 'No authenticated user found.');
         }
     }
 
     try {
         const count = await BookStory.countDocuments(query);
-        return res.status(200).json({ success: true, count: count });
+        return sendCountResponse(res, 200, 'BookStory count retrieved successfully.', count);
     } catch (error) {
         console.error('Error counting book stories:', error);
-        return res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -87,28 +90,31 @@ exports.getAllPublicBookStories = async (req, res, next) => {
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
             .sort({ createdAt: -1 });
+
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ isPublic: true }),
             paginateQuery(baseQuery, page, pageSize)
         ]);
-            
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(
+            res, 
+            200, 
+            'All public book stories retrieved successfully.',
+            bookStories,
+            pagination
+        );
     } catch (error) {
         console.error('Error retrieving all public book stories:', error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Internal Server Error.' 
-        });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
-};
+}
 
 // 분류 x 친구 서재에서의 공개된 북스토리 조회 with pagination
 exports.getFriendPublicBookStories = async (req, res, next) => {
@@ -127,20 +133,23 @@ exports.getFriendPublicBookStories = async (req, res, next) => {
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(
+            res, 
+            200, 
+            "Friend's public book stories retrieved successfully.", 
+            bookStories, 
+            pagination
+        );
     } catch (error) {
         console.error(`Error retrieving friend's public book stories:`, error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Internal Server Error.' 
-        });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
@@ -151,35 +160,35 @@ exports.getMyBookStories = async (req, res, next) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     try {
-        // folderIds가 빈 배열인 문서만 조회하도록 쿼리 수정
         const baseQuery = BookStory.find({ userId })
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
             .sort({ createdAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
-            // countDocuments 쿼리도 동일하게 수정
             BookStory.countDocuments({ userId }),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(
+            res, 
+            200, 
+            'My book stories retrieved successfully.', 
+            bookStories, 
+            pagination
+        );
     } catch (error) {
-        console.error(`Error retrieving user's book stories without folders:`, error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Internal Server Error.' 
-        });
+        console.error(`Error retrieving user's book stories:`, error);
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 
 // 조회(키워드)
 // 로그인한 사용자의 북스토리 키워드 검색 with pagination
@@ -190,7 +199,7 @@ exports.getMyPublicBookStoriesWithKeyword = async (req, res, next) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     if (!keyword) {
-        return res.status(400).json({ success: false, message: 'Keyword is required.' });
+        return sendError(res, 400, 'Keyword is required.');
     }
 
     // Define the base query condition for reuse
@@ -213,17 +222,23 @@ exports.getMyPublicBookStoriesWithKeyword = async (req, res, next) => {
         // Use Promise.all to execute both queries in parallel
         const [totalItems, bookStories] = await Promise.all([totalItemsPromise, bookStoriesPromise]);
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+        // Return the response with pagination
+        return sendSuccessWithPagination(
+            res,
+            200,
+            'User\'s book stories with keyword retrieved successfully.',
+            bookStories,
+            pagination
+        );
     } catch (error) {
         console.error('Error retrieving user\'s book stories with keyword:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -247,7 +262,7 @@ exports.getFriendPublicBookStoriesWithKeyword = async (req, res, next) => {
         // Check if the friendId corresponds to an existing user
         const friendExists = await User.exists({ _id: friendId });
         if (!friendExists) {
-            return res.status(404).json({ success: false, message: 'Friend not found.' });
+            return sendError(res, 404, 'Friend not found.');
         }
 
         // Define the query conditions separately
@@ -270,20 +285,25 @@ exports.getFriendPublicBookStoriesWithKeyword = async (req, res, next) => {
         // Use Promise.all to execute both queries in parallel
         const [totalItems, bookStories] = await Promise.all([totalItemsPromise, bookStoriesPromise]);
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+        // Return the response with pagination
+        return sendSuccessWithPagination(
+            res,
+            200,
+            'Friend\'s public book stories with keyword retrieved successfully.',
+            bookStories,
+            pagination
+        );
     } catch (error) {
         console.error('Error retrieving friend\'s public book stories with keyword:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
-
 
 // 모든 사용자의 공개된 북스토리 키워드 검색 with pagination
 exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
@@ -292,7 +312,7 @@ exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     if (!keyword) {
-        return res.status(400).json({ success: false, message: 'Keyword is required.' });
+        return sendError(res, 400, 'Keyword is required.');
     }
 
     try {
@@ -313,17 +333,23 @@ exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
         // 페이지네이션을 적용하여 데이터를 조회합니다.
         const bookStories = await paginateQuery(bookStoriesQuery, page, pageSize);
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+        // 성공적인 응답을 반환합니다.
+        return sendSuccessWithPagination(
+            res,
+            200,
+            'All public book stories with keyword retrieved successfully.',
+            bookStories,
+            pagination
+        );
     } catch (error) {
         console.error('Error retrieving all public book stories with keyword:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -361,13 +387,18 @@ exports.updateBookStory = async (req, res, next) => {
           .populate('bookId');
 
         if (!bookStory) {
-            return res.status(404).json({ success: false, message: 'BookStory not found or you are not the owner.' });
+            return sendError(res, 404, 'BookStory not found or you are not the owner.');
         }
 
-        res.status(200).json({ success: true, data: bookStory });
+        return sendSuccess(
+            res, 
+            200, 
+            'BookStory updated successfully.', 
+            bookStory
+        );
     } catch (error) {
         console.error('Error updating book story:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -380,13 +411,18 @@ exports.getBookStoryById = async (req, res, next) => {
             .populate('bookId');
 
         if (!bookStory) {
-            return res.status(404).json({ success: false, message: 'BookStory not found.' });
+            return sendError(res, 404, 'BookStory not found.');
         }
 
-        res.status(200).json({ success: true, data: bookStory });
+        return sendSuccess(
+            res, 
+            200, 
+            'BookStory retrieved successfully.', 
+            bookStory
+        );
     } catch (error) {
         console.error('Error retrieving book story:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -406,7 +442,7 @@ exports.deleteBookStory = async (req, res, next) => {
         if (!bookStory) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(404).json({ success: false, message: 'BookStory not found or not authorized to delete.' });
+            return sendError(res, 404, 'BookStory not found or you are not authorized to delete it.');
         }
 
         // 해당 북스토리에 연관된 댓글들 삭제
@@ -416,13 +452,17 @@ exports.deleteBookStory = async (req, res, next) => {
         await session.commitTransaction();
         session.endSession();
 
-        res.status(200).json({ success: true, message: 'BookStory and related comments deleted successfully.' });
+        return sendSuccess(
+            res, 
+            200, 
+            'BookStory and related comments deleted successfully.'
+        );
     } catch (error) {
         console.error('Error deleting book story:', error);
         // 트랜잭션 중 에러 발생 시 롤백
         await session.abortTransaction();
         session.endSession();
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
@@ -433,7 +473,7 @@ exports.deleteMultipleBookStories = async (req, res, next) => {
     const userId = req.user._id;
 
     if (!Array.isArray(bookStoryIds) || !bookStoryIds.every(mongoose.Types.ObjectId.isValid)) {
-        return res.status(400).json({ success: false, message: 'Invalid book story IDs.' });
+        return sendError(res, 400, 'Invalid book story IDs format. Please provide an array of valid ObjectId strings.');
     }
 
     try {
@@ -443,16 +483,20 @@ exports.deleteMultipleBookStories = async (req, res, next) => {
         });
 
         if (result.deletedCount !== bookStoryIds.length) {
-            return res.status(404).json({ success: false, message: 'Some BookStories were not found, or you are not authorized to delete them.' });
+            return sendError(res, 404, 'Some BookStories were not found, or you are not authorized to delete them.');
         }
 
-        res.status(200).json({ success: true, message: `${result.deletedCount} BookStory(ies) deleted successfully.` });
+        return sendSuccess(
+            res, 
+            200, 
+            `${result.deletedCount} BookStory(ies) deleted successfully.`
+        );
     } catch (error) {
         console.error('Error deleting multiple book stories:', error);
         if (error.kind === 'ObjectId') {
-            return res.status(400).json({ success: false, message: 'Invalid book story IDs.' });
+            return sendError(res, 400, 'Invalid book story IDs format. Please provide an array of valid ObjectId strings.');
         }
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.', error);
     }
 };
 
