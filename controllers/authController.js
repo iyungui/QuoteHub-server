@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const AppleAuth = require("apple-auth");
 const User = require("../models/User");
+const { sendSuccess, sendError } = require('../utils/responseHelper');
 
 // JWT 비밀 키
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
@@ -103,8 +104,7 @@ const appleCallback = async (req, res) => {
       JWTRefreshToken: refreshToken
     };
 
-
-    res.status(200).json(responseData);
+    return sendSuccess(res, 200, 'Apple authentication successful.', responseData);
   } catch (error) {
     console.error("Error during Apple authentication:", error);
     console.error("Full error details:", JSON.stringify(error, null, 2));
@@ -113,10 +113,7 @@ const appleCallback = async (req, res) => {
       console.error("Apple Server Response:", error.response.data);
     }
 
-    res.status(500).json({ 
-      success: false, 
-      error: "An error occurred during the Apple authentication!" 
-    });
+    return sendError(res, 500, "An error occurred during the Apple authentication!");
   }
 };
 
@@ -125,7 +122,7 @@ const inputProfile = async (req, res) => {
   try {
     let user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, error: "User not found!" });
+      return sendError(res, 404, "User not found!");
     }
 
     const updateFields = ["nickname", "statusMessage"];
@@ -137,7 +134,7 @@ const inputProfile = async (req, res) => {
         nickname: req.body.nickname,
       });
       if (existingUserWithNickname && existingUserWithNickname._id.toString() !== user._id.toString()) {
-        return res.status(400).json({ success: false, error: "Nickname already in use!" });
+        return sendError(res, 400, "Nickname already in use!");
       }
     }
 
@@ -154,17 +151,13 @@ const inputProfile = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(req.user._id, updatedData, { new: true })
       .select("-refreshToken -appleId -__v");
     
-    res.status(200).json({ 
-      success: true, 
-      message: "Profile updated successfully!",
-      user: updatedUser
-    });
+    return sendSuccess(res, 200, "Profile updated successfully!", updatedUser);
   } catch (error) {
     console.error(error);
     if (error.code === 11000 && error.keyPattern && error.keyPattern.nickname) {
-      return res.status(400).json({ success: false, error: "Nickname already in use!" });
+      return sendError(res, 400, "Nickname already in use!");
     }
-    res.status(500).json({ success: false, error: "An error occurred!" });
+    return sendError(res, 500, "An error occurred!");
   }
 };
 
@@ -176,7 +169,7 @@ const renewAccessToken = async (req, res) => {
       : null;
 
     if (!refreshToken) {
-      return res.status(400).json({ success: false, error: "No refresh token provided." });
+      return sendError(res, 400, "No refresh token provided.");
     }
 
     // Refresh Token 검증
@@ -184,19 +177,14 @@ const renewAccessToken = async (req, res) => {
 
     const newAccessToken = generateAccessToken({ _id: decodedRefreshToken._id });
 
-    res.status(200).json({ 
-      success: true, 
-      accessToken: newAccessToken 
-    });
+    const responseData = { accessToken: newAccessToken };
+    return sendSuccess(res, 200, "Access token renewed successfully.", responseData);
   } catch (error) {
     console.error(error);
     if (error.name === "TokenExpiredError" || error.name === "JsonWebTokenError") {
-      return res.status(401).json({ success: false, error: "Invalid or expired refresh token." });
+      return sendError(res, 401, "Invalid or expired refresh token.");
     }
-    res.status(500).json({ 
-      success: false, 
-      error: "Error occurred while renewing the access token!" 
-    });
+    return sendError(res, 500, "Error occurred while renewing the access token!");
   }
 };
 
@@ -208,20 +196,14 @@ const validateToken = async (req, res) => {
   const refreshToken = req.headers["x-refresh-token"];
 
   if (!accessToken || !refreshToken) {
-    return res.status(400).json({ 
-      success: false, 
-      error: "Access or refresh token not provided." 
-    });
+    return sendError(res, 400, "Access or refresh token not provided.");
   }
 
   try {
     // 액세스 토큰 검증
     const decodedAccessToken = jwt.verify(accessToken, JWT_SECRET);
-    return res.status(200).json({ 
-      success: true, 
-      valid: true, 
-      message: "Access token is still valid." 
-    });
+    const responseData = { valid: true };
+    return sendSuccess(res, 200, "Access token is still valid.", responseData);
   } catch (error) {
     if (error.name === "TokenExpiredError" || error.name === "JsonWebTokenError") {
       try {
@@ -230,23 +212,18 @@ const validateToken = async (req, res) => {
         const newAccessToken = generateAccessToken({ _id: decodedRefreshToken._id });
         const newRefreshToken = generateRefreshToken({ _id: decodedRefreshToken._id });
         
-        return res.status(200).json({ 
-          success: true,
-          valid: false, 
-          newAccessToken, 
-          newRefreshToken 
-        });
+        const responseData = {
+          valid: false,
+          newAccessToken,
+          newRefreshToken
+        };
+        
+        return sendSuccess(res, 200, "New tokens generated.", responseData);
       } catch (err) {
-        return res.status(401).json({
-          success: false,
-          error: "Invalid or expired refresh token. Please log in again.",
-        });
+        return sendError(res, 401, "Invalid or expired refresh token. Please log in again.");
       }
     }
-    return res.status(500).json({ 
-      success: false,
-      error: "Error occurred while validating the access token!" 
-    });
+    return sendError(res, 500, "Error occurred while validating the access token!");
   }
 };
 
@@ -265,7 +242,7 @@ const revokeAccount = async (req, res) => {
     const user = await User.findById(req.user._id).session(session);
     if (!user) {
       await session.abortTransaction();
-      return res.status(404).json({ success: false, error: "User not found!" });
+      return sendError(res, 404, "User not found!");
     }
 
     // 팔로잉 및 팔로워 목록에서 사용자 제거
@@ -298,17 +275,11 @@ const revokeAccount = async (req, res) => {
     await User.deleteOne({ _id: user._id }, { session });
 
     await session.commitTransaction();
-    res.status(200).json({
-      success: true,
-      message: "User data and token revoked successfully!",
-    });
+    return sendSuccess(res, 200, "User data and token revoked successfully!");
   } catch (error) {
     await session.abortTransaction();
     console.error(error);
-    res.status(500).json({
-      success: false,
-      error: "An error occurred revoking the token or deleting user data!",
-    });
+    return sendError(res, 500, "An error occurred revoking the token or deleting user data!");
   } finally {
     session.endSession();
   }

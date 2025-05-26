@@ -1,8 +1,9 @@
-// FollowController.js
+// controllers/followController.js
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Follow = require('../models/Follow');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
+const { sendSuccess, sendSuccessWithPagination, sendError } = require('../utils/responseHelper');
 
 // 팔로우
 const followUser = async (req, res) => {
@@ -11,11 +12,11 @@ const followUser = async (req, res) => {
 
     // Check if the followerId is the same as the followingId
     if (followerId.toString() === followingId) {
-        return res.status(400).json({ success: false, error: "You cannot follow yourself." });
+        return sendError(res, 400, "You cannot follow yourself.");
     }
     
     if (!mongoose.Types.ObjectId.isValid(followingId)) {
-        return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+        return sendError(res, 400, 'Invalid user ID.');
     }
 
     const session = await mongoose.startSession();
@@ -38,7 +39,7 @@ const followUser = async (req, res) => {
                 await User.findByIdAndUpdate(followingId, { $addToSet: { followers: followerId } }, { session });
             } else {
                 await session.abortTransaction();
-                return res.status(400).json({ success: false, error: 'You are already following this user.' });
+                return sendError(res, 400, 'You are already following this user.');
             }
         } else {
             // Create new follow record if not already following or blocked
@@ -57,18 +58,18 @@ const followUser = async (req, res) => {
 
         // Fetch followed user's detailed information
         const followedUser = await User.findById(followingId)
-            .select('_id nickname profileImage statusMessage followers following') // Select necessary fields
+            .select('_id nickname profileImage statusMessage followers following')
             .session(session);
         
         await session.commitTransaction();
-        res.status(201).json({ success: true, data: followedUser });
+        return sendSuccess(res, 201, 'User followed successfully.', followedUser);
 
     } catch (error) {
         await session.abortTransaction();
         if (error instanceof mongoose.Error.ValidationError) {
-            res.status(400).json({ success: false, error: error.message });
+            return sendError(res, 400, error.message);
         } else {
-            res.status(500).json({ success: false, error: 'Server error while processing follow.' });
+            return sendError(res, 500, 'Server error while processing follow.');
         }
     } finally {
         session.endSession();
@@ -80,13 +81,13 @@ const checkFollowStatus = async (req, res) => {
     const targetUserId = req.params.userId;
 
     if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
-        return res.status(400).json({ success: false, error: 'Invalid target user ID.' });
+        return sendError(res, 400, 'Invalid target user ID.');
     }
 
     try {
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
+            return sendError(res, 404, 'User not found.');
         }
 
         // 팔로우 상태 확인
@@ -100,13 +101,14 @@ const checkFollowStatus = async (req, res) => {
         });
         const isBlocked = !!blockedStatus;
 
-        res.status(200).json({
-            success: true, 
-            isFollowing: isFollowing, 
+        const statusData = {
+            isFollowing: isFollowing,
             isBlocked: isBlocked
-        });
+        };
+
+        return sendSuccess(res, 200, 'Follow status retrieved successfully.', statusData);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Server error while checking follow status.' });
+        return sendError(res, 500, 'Server error while checking follow status.');
     }
 };
 
@@ -117,26 +119,25 @@ const getFollowers = async (req, res) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+        return sendError(res, 400, 'Invalid user ID.');
     }
 
     try {
         // Find the user by ID
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
+            return sendError(res, 404, 'User not found.');
         }
 
         // Ensure the user has followers field
         if (!user.followers) {
-            return res.status(200).json({
-                success: true,
-                data: [],
+            const pagination = {
                 currentPage: page,
                 totalPages: 0,
                 pageSize: pageSize,
                 totalItems: 0
-            });
+            };
+            return sendSuccessWithPagination(res, 200, 'Followers retrieved successfully.', [], pagination);
         }
 
         const followerIds = user.followers;
@@ -149,24 +150,23 @@ const getFollowers = async (req, res) => {
         const totalItems = followerIds.length;
         const followers = await paginateQuery(baseQuery, page, pageSize);
 
-        res.status(200).json({
-            success: true,
-            data: followers,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'Followers retrieved successfully.', followers, pagination);
     } catch (error) {
         // Distinguish between validation errors and other types of errors
         if (error.name === 'ValidationError') {
-            res.status(400).json({ success: false, error: error.message });
+            return sendError(res, 400, error.message);
         } else {
-            res.status(500).json({ success: false, error: 'Server error while retrieving followers.' });
+            return sendError(res, 500, 'Server error while retrieving followers.');
         }
     }
 };
-
 
 // 팔로잉 목록 조회 with pagination
 const getFollowing = async (req, res) => {
@@ -175,26 +175,25 @@ const getFollowing = async (req, res) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+        return sendError(res, 400, 'Invalid user ID.');
     }
 
     try {
         // Find the user by ID
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
+            return sendError(res, 404, 'User not found.');
         }
 
         // Ensure the user has following field
         if (!user.following) {
-            return res.status(200).json({
-                success: true,
-                data: [],
+            const pagination = {
                 currentPage: page,
                 totalPages: 0,
                 pageSize: pageSize,
                 totalItems: 0
-            });
+            };
+            return sendSuccessWithPagination(res, 200, 'Following retrieved successfully.', [], pagination);
         }
 
         const followingIds = user.following;
@@ -207,20 +206,20 @@ const getFollowing = async (req, res) => {
         const totalItems = followingIds.length;
         const following = await paginateQuery(baseQuery, page, pageSize);
 
-        res.status(200).json({
-            success: true,
-            data: following,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'Following retrieved successfully.', following, pagination);
     } catch (error) {
         // Distinguish between validation errors and other types of errors
         if (error.name === 'ValidationError') {
-            res.status(400).json({ success: false, error: error.message });
+            return sendError(res, 400, error.message);
         } else {
-            res.status(500).json({ success: false, error: 'Server error while retrieving following.' });
+            return sendError(res, 500, 'Server error while retrieving following.');
         }
     }
 };
@@ -231,16 +230,21 @@ const getFollowCounts = async (req, res) => {
 
     try {
         const user = await User.findById(userId);
+        if (!user) {
+            return sendError(res, 404, 'User not found.');
+        }
+
         const followersCount = user.followers.length;
         const followingCount = user.following.length;
         
-        res.status(200).json({
-            success: true,
+        const countsData = {
             followersCount,
             followingCount
-        });
+        };
+
+        return sendSuccess(res, 200, 'Follow counts retrieved successfully.', countsData);
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        return sendError(res, 500, error.message);
     }
 };
 
@@ -252,17 +256,17 @@ const updateFollowStatus = async (req, res) => {
 
     // Check if the followerId and followingId are the same
     if (followerId.toString() === followingId) {
-        return res.status(400).json({ success: false, error: "You cannot follow or block yourself." });
+        return sendError(res, 400, "You cannot follow or block yourself.");
     }
 
     // Check for a valid ObjectId for followingId
     if (!mongoose.Types.ObjectId.isValid(followingId)) {
-        return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+        return sendError(res, 400, 'Invalid user ID.');
     }
 
     // Validate status
     if (!['FOLLOWING', 'BLOCKED'].includes(status)) {
-        return res.status(400).json({ success: false, error: 'Invalid status.' });
+        return sendError(res, 400, 'Invalid status.');
     }
 
     // Start a session for transaction
@@ -293,26 +297,24 @@ const updateFollowStatus = async (req, res) => {
 
             if (!removedFollow) {
                 await session.abortTransaction();
-                return res.status(404).json({ success: false, error: 'Block record not found or already unblocked.' });
+                return sendError(res, 404, 'Block record not found or already unblocked.');
             }
         }
 
         await session.commitTransaction();
-        res.status(200).json({ success: true, message: `Follow status updated to ${status}.`, data: followRecord });
+        return sendSuccess(res, 200, `Follow status updated to ${status}.`, followRecord);
 
     } catch (error) {
         await session.abortTransaction();
         if (error instanceof mongoose.Error.ValidationError) {
-            res.status(400).json({ success: false, error: error.message });
+            return sendError(res, 400, error.message);
         } else {
-            res.status(500).json({ success: false, error: 'Server error while updating follow status.' });
+            return sendError(res, 500, 'Server error while updating follow status.');
         }
     } finally {
         session.endSession();
     }
 };
-
-
 
 // 팔로우 해제
 const unfollowUser = async (req, res) => {
@@ -320,7 +322,7 @@ const unfollowUser = async (req, res) => {
     const followingId = req.params.userId;
 
     if (!mongoose.Types.ObjectId.isValid(followingId)) {
-        return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+        return sendError(res, 400, 'Invalid user ID.');
     }
 
     const session = await mongoose.startSession();
@@ -335,7 +337,7 @@ const unfollowUser = async (req, res) => {
 
         if (!removedFollow) {
             await session.abortTransaction();
-            return res.status(404).json({ success: false, error: 'Follow record not found or already unfollowed.' });
+            return sendError(res, 404, 'Follow record not found or already unfollowed.');
         }
 
         // 사용자 A의 팔로우 목록 업데이트
@@ -349,13 +351,14 @@ const unfollowUser = async (req, res) => {
         }, { session });
 
         const unfollowedUser = await User.findById(followingId)
-            .select('_id nickname profileImage statusMessage followers following') // 필요한 필드만 선택
-            .session(session);            
+            .select('_id nickname profileImage statusMessage followers following')
+            .session(session);
+            
         await session.commitTransaction();
-        res.status(200).json({ success: true, data: unfollowedUser });
+        return sendSuccess(res, 200, 'User unfollowed successfully.', unfollowedUser);
     } catch (error) {
         await session.abortTransaction();
-        res.status(500).json({ success: false, error: 'Server error while processing unfollow.' });
+        return sendError(res, 500, 'Server error while processing unfollow.');
     } finally {
         session.endSession();
     }
@@ -368,7 +371,7 @@ const searchUser = async (req, res) => {
         const loggedInUserId = req.user._id; // 로그인한 사용자의 ID
 
         if (!nickname) {
-            return res.status(400).json({ success: false, message: 'No nickname provided for search.' });
+            return sendError(res, 400, 'No nickname provided for search.');
         }
         
         // 닉네임을 기준으로 로그인 한 사용자를 제외한 사용자 검색
@@ -377,13 +380,12 @@ const searchUser = async (req, res) => {
             nickname: { $regex: nickname, $options: 'i' } // 대소문자 구분 없는 검색
         }).select('_id nickname profileImage statusMessage');
         
-        return res.status(200).json({ success: true, users: users });
+        return sendSuccess(res, 200, 'Users retrieved successfully.', users);
     } catch (error) {
         console.error(`Search User Error: ${error}`);
-        return res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 
 // 차단 목록 api
 const blockedList = async (req, res) => {
@@ -400,13 +402,12 @@ const blockedList = async (req, res) => {
         // 차단한 사용자의 정보만 추출
         const blockedUserInfo = blockedUsers.map(bu => bu.following);
         
-        return res.status(200).json({ success: true, blockedList: blockedUserInfo });
+        return sendSuccess(res, 200, 'Blocked list retrieved successfully.', blockedUserInfo);
     } catch (error) {
         console.error(`Blocked List Error: ${error}`);
-        return res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 
 module.exports = {
     followUser,

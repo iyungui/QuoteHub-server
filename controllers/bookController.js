@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const axios = require('axios');
 const Book = require('../models/Book');
+const { sendSuccess, sendError } = require('../utils/responseHelper');
 
 async function fetchBooksByPage(query, restAPIKey, page = 1) {
     try {
@@ -77,20 +78,19 @@ exports.fetchBookData = async (req, res, next) => {
             });
         }
     
-        res.json(kakaoResponse);
+        return sendSuccess(res, 200, 'Book data fetched successfully.', kakaoResponse);
     } catch (error) {
         console.error('Error fetching book data:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 
 exports.recommendTodayBooks = async (req, res, next) => {
     try {
         // DB에서 무작위로 책 10 가지 선택
         const recommendedBook = await Book.aggregate([{ $sample: { size: 10 } }]);
-        res.status(200).json({ success: true, data: recommendedBook });
+        return sendSuccess(res, 200, 'Today books retrieved successfully.', recommendedBook);
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };

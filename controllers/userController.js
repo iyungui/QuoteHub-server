@@ -1,6 +1,7 @@
 // controllers/userController.js
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const { sendSuccess, sendError } = require('../utils/responseHelper');
 
 // 사용자 프로필 조회
 const getUserProfile = async (req, res) => {
@@ -10,7 +11,7 @@ const getUserProfile = async (req, res) => {
     if (req.params.userId) {
       // Validate ObjectId
       if (!mongoose.Types.ObjectId.isValid(req.params.userId)) {
-        return res.status(400).json({ success: false, error: "Invalid user ID" });
+        return sendError(res, 400, "Invalid user ID");
       }
       query = { _id: req.params.userId };
     } else {
@@ -23,13 +24,13 @@ const getUserProfile = async (req, res) => {
     );
     
     if (user) {
-      res.status(200).json({ success: true, data: user });
+      return sendSuccess(res, 200, "User profile retrieved successfully.", user);
     } else {
-      res.status(404).json({ success: false, error: "User not found" });
+      return sendError(res, 404, "User not found");
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+    return sendError(res, 500, "Internal Server Error");
   }
 };
 
@@ -55,10 +56,7 @@ const updateUserProfile = async (req, res) => {
         existingUser &&
         existingUser._id.toString() !== req.user._id.toString()
       ) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Nickname is already taken!" 
-        });
+        return sendError(res, 400, "Nickname is already taken!");
       }
     }
 
@@ -72,16 +70,10 @@ const updateUserProfile = async (req, res) => {
       { new: true }
     ).select("-refreshToken -appleId -__v -followers -following");
     
-    res.status(200).json({ 
-      success: true, 
-      data: updatedUser 
-    });
+    return sendSuccess(res, 200, "User profile updated successfully.", updatedUser);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || "Failed to update user!" 
-    });
+    return sendError(res, 500, error.message || "Failed to update user!");
   }
 };
 
@@ -93,16 +85,10 @@ const getUserList = async (req, res) => {
       .limit(10)
       .select("-appleId -refreshToken");
 
-    res.status(200).json({ 
-      success: true, 
-      data: users 
-    });
+    return sendSuccess(res, 200, "User list retrieved successfully.", users);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ 
-      success: false, 
-      error: "Server error" 
-    });
+    return sendError(res, 500, "Server error");
   }
 };
 

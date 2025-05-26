@@ -7,7 +7,7 @@ const {
     reportBookStory,
     getReportUsers,
     getReportStories
-} = require('../controllers/ReportController');
+} = require('../controllers/reportController');
 
 router.post('/user', ensureAuthenticated, reportUser);
 router.post('/bookstory', ensureAuthenticated, reportBookStory);

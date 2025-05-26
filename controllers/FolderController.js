@@ -1,8 +1,9 @@
+// controllers/folderController.js
 const mongoose = require('mongoose');
 const BookStory = require('../models/BookStory');
 const Folder = require('../models/Folder');
-
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
+const { sendSuccess, sendSuccessWithPagination, sendError } = require('../utils/responseHelper');
 
 // 모든 사용자의 공개된 북스토리 폴더별 조회
 exports.getAllPublicBookStoriesByFolder = async (req, res) => {
@@ -12,10 +13,7 @@ exports.getAllPublicBookStoriesByFolder = async (req, res) => {
 
     // 유효한 ObjectId인지 확인
     if (!mongoose.Types.ObjectId.isValid(folderId)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid folder identifier.'
-        });
+        return sendError(res, 400, 'Invalid folder identifier.');
     }
 
     try {
@@ -30,42 +28,32 @@ exports.getAllPublicBookStoriesByFolder = async (req, res) => {
         ]);
 
         if (totalItems === 0) {
-            return res.status(200).json({
-                success: true,
-                message: 'No book stories found in the specified folder.',
-                data: [], // 비어있는 데이터 배열
+            const pagination = {
                 currentPage: page,
-                totalPages: 0, // 총 페이지 수는 0으로
+                totalPages: 0,
                 pageSize: pageSize,
                 totalItems: totalItems
-            });
+            };
+            return sendSuccessWithPagination(res, 200, 'No book stories found in the specified folder.', [], pagination);
         }
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'Public book stories retrieved successfully.', bookStories, pagination);
     } catch (error) {
         // CastError를 확인하여 명확한 에러 메시지를 제공
         if (error.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid folder identifier.'
-            });
+            return sendError(res, 400, 'Invalid folder identifier.');
         }
         console.error('Error retrieving public book stories by folder:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal Server Error.'
-        });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
-
 
 // 특정 친구의 공개된 북스토리 폴더별 조회
 exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
@@ -75,10 +63,7 @@ exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
 
     // 유효한 ObjectId인지 확인
     if (!mongoose.Types.ObjectId.isValid(folderId) || !mongoose.Types.ObjectId.isValid(friendId)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid folder or friend identifier.'
-        });
+        return sendError(res, 400, 'Invalid folder or friend identifier.');
     }
 
     try {
@@ -93,41 +78,32 @@ exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
         ]);
 
         if (totalItems === 0) {
-            return res.status(200).json({
-                success: true,
-                message: 'No book stories found in the specified folder.',
-                data: [], // 비어있는 데이터 배열
+            const pagination = {
                 currentPage: page,
-                totalPages: 0, // 총 페이지 수는 0으로
+                totalPages: 0,
                 pageSize: pageSize,
                 totalItems: totalItems
-            });
+            };
+            return sendSuccessWithPagination(res, 200, 'No book stories found in the specified folder.', [], pagination);
         }
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, "Friend's book stories retrieved successfully.", bookStories, pagination);
     } catch (error) {
         // CastError를 확인하여 명확한 에러 메시지를 제공
         if (error.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid folder or friend identifier.'
-            });
+            return sendError(res, 400, 'Invalid folder or friend identifier.');
         }
         console.error('Error retrieving friend book stories by folder:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal Server Error.'
-        });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 
 // 내 서재의 북스토리 폴더별 조회
 exports.getMyBookStoriesByFolder = async (req, res) => {
@@ -138,10 +114,7 @@ exports.getMyBookStoriesByFolder = async (req, res) => {
 
     // 유효한 ObjectId인지 확인
     if (!mongoose.Types.ObjectId.isValid(folderId)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid folder identifier.'
-        });
+        return sendError(res, 400, 'Invalid folder identifier.');
     }
 
     try {
@@ -157,49 +130,40 @@ exports.getMyBookStoriesByFolder = async (req, res) => {
 
         // 폴더에 북스토리가 없는 경우 처리
         if (totalItems === 0) {
-            return res.status(200).json({
-                success: true,
-                message: 'No book stories found in the specified folder.',
-                data: [], // 비어있는 데이터 배열
+            const pagination = {
                 currentPage: page,
-                totalPages: 0, // 총 페이지 수는 0으로
+                totalPages: 0,
                 pageSize: pageSize,
                 totalItems: totalItems
-            });
+            };
+            return sendSuccessWithPagination(res, 200, 'No book stories found in the specified folder.', [], pagination);
         }
 
-        res.status(200).json({
-            success: true,
-            data: bookStories,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'My book stories retrieved successfully.', bookStories, pagination);
     } catch (error) {
         // CastError를 확인하여 명확한 에러 메시지를 제공
         if (error.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid folder identifier.'
-            });
+            return sendError(res, 400, 'Invalid folder identifier.');
         }
         console.error('Error retrieving my book stories by folder:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal Server Error.'
-        });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
-
 // 폴더 생성
 exports.createFolder = async (req, res) => {
-    const { name, description, isPublic } = req.body; // isPublic 값을 req.body에서 추출
+    const { name, description, isPublic } = req.body;
     const userId = req.user._id;
 
     if (!name) {
-        return res.status(400).json({ success: false, message: 'Folder name is required.' });
+        return sendError(res, 400, 'Folder name is required.');
     }
 
     const folderImageURL = req.file ? req.file.location : undefined;
@@ -211,23 +175,22 @@ exports.createFolder = async (req, res) => {
             name,
             description,
             folderImageURL,
-            isPublic: isPublic !== undefined ? isPublic : true // isPublic 값이 제공되지 않으면 기본값 true 사용
+            isPublic: isPublic !== undefined ? isPublic : true
         });
 
         // 폴더 저장
         const newFolder = await folder.save();
         const populatedFolder = await Folder.findById(newFolder._id)
-        .populate('userId', 'nickname profileImage')
+            .populate('userId', 'nickname profileImage');
 
-        // 성공 응답 반환
-        res.status(201).json({ success: true, data: populatedFolder });
+        return sendSuccess(res, 201, 'Folder created successfully.', populatedFolder);
     } catch (error) {
         // 에러 처리
         if (error.code === 11000) { // Mongoose duplicate key error
-            return res.status(409).json({ success: false, message: 'Folder already exists.' });
+            return sendError(res, 409, 'Folder already exists.');
         } else {
             console.error('Error creating folder:', error);
-            res.status(500).json({ success: false, message: 'Internal Server Error.' });
+            return sendError(res, 500, 'Internal Server Error.');
         }
     }
 };
@@ -236,6 +199,7 @@ exports.createFolder = async (req, res) => {
 exports.getAllFolders = async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
+    
     try {
         const baseQuery = Folder.find({ isPublic: true })
             .populate('userId', 'nickname profileImage')
@@ -246,17 +210,17 @@ exports.getAllFolders = async (req, res) => {
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
-        res.status(200).json({
-            success: true,
-            data: folders,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'All folders retrieved successfully.', folders, pagination);
     } catch (error) {
         console.error('Error retrieving all folders:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
@@ -276,17 +240,17 @@ exports.getUserFolders = async (req, res) => {
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
-        res.status(200).json({
-            success: true,
-            data: folders,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'User folders retrieved successfully.', folders, pagination);
     } catch (error) {
         console.error(`Error retrieving folders for user ${userId}:`, error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
@@ -306,17 +270,17 @@ exports.getMyFolders = async (req, res) => {
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
-        res.status(200).json({
-            success: true,
-            data: folders,
+        const pagination = {
             currentPage: page,
             totalPages: calculateTotalPages(totalItems, pageSize),
             pageSize: pageSize,
             totalItems: totalItems
-        });
+        };
+
+        return sendSuccessWithPagination(res, 200, 'My folders retrieved successfully.', folders, pagination);
     } catch (error) {
         console.error(`Error retrieving folders for the logged-in user:`, error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
@@ -335,27 +299,26 @@ exports.updateFolder = async (req, res) => {
                 name,
                 description,
                 folderImageURL,
-                ...(isPublic !== undefined && { isPublic }) // isPublic 값이 제공되면 업데이트 객체에 추가
+                ...(isPublic !== undefined && { isPublic })
             },
             { new: true, runValidators: true }
         ).populate('userId', 'nickname profileImage');
 
         if (!updatedFolder) {
-            return res.status(404).json({ success: false, message: 'Folder not found or user not authorized.' });
+            return sendError(res, 404, 'Folder not found or user not authorized.');
         }
 
-        res.status(200).json({ success: true, data: updatedFolder });
+        return sendSuccess(res, 200, 'Folder updated successfully.', updatedFolder);
     } catch (error) {
         // 에러 처리 - 중복된 폴더 이름에 대한 처리
         if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'Folder already exists.' });
+            return sendError(res, 409, 'Folder already exists.');
         } else {
             console.error('Error updating folder:', error);
-            res.status(500).json({ success: false, message: 'Internal Server Error.' });
+            return sendError(res, 500, 'Internal Server Error.');
         }
     }
 };
-
 
 // 폴더 삭제
 exports.deleteFolder = async (req, res) => {
@@ -365,7 +328,7 @@ exports.deleteFolder = async (req, res) => {
     try {
         const folder = await Folder.findOneAndDelete({ _id: folderId, userId: userId });
         if (!folder) {
-            return res.status(404).json({ success: false, message: 'Folder not found or user not authorized to delete.' });
+            return sendError(res, 404, 'Folder not found or user not authorized to delete.');
         }
 
         // 폴더 삭제 후, 해당 폴더에 속한 북스토리들의 folderIds 배열에서 이 폴더 ID를 제거합니다.
@@ -374,9 +337,9 @@ exports.deleteFolder = async (req, res) => {
             { $pull: { folderIds: folderId } }
         );
 
-        res.status(200).json({ success: true, message: 'Folder and its references in BookStories deleted successfully.' });
+        return sendSuccess(res, 200, 'Folder and its references in BookStories deleted successfully.');
     } catch (error) {
         console.error('Error deleting folder:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };

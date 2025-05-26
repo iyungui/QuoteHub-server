@@ -7,7 +7,7 @@ const {
     getCommentsForBookStory,
     deleteComment,
     getCommentCountForBookStory
- } = require('../controllers/BookStoryCommentController');
+ } = require('../controllers/bookStoryCommentController');
 
 router.post('/', ensureAuthenticated, addCommentToBookStory);
 

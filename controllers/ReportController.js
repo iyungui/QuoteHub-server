@@ -1,8 +1,9 @@
-// ReportController.js
+// controllers/reportController.js
 const mongoose = require('mongoose');
 const Report = require('../models/Report');
 const User = require('../models/User');
 const BookStory = require('../models/BookStory');
+const { sendSuccess, sendError } = require('../utils/responseHelper');
 
 const report = async (req, res, type, onModel) => {
     const reporterId = req.user._id;
@@ -13,7 +14,7 @@ const report = async (req, res, type, onModel) => {
         // 중복 신고 확인
         const existingReport = await Report.findOne({ reporterId, targetId, type });
         if (existingReport) {
-            return res.status(400).send({ message: `You have already reported this ${onModel.toLowerCase()}.` });
+            return sendError(res, 400, `You have already reported this ${onModel.toLowerCase()}.`);
         }
 
         const newReport = new Report({
@@ -25,12 +26,11 @@ const report = async (req, res, type, onModel) => {
         });
 
         await newReport.save();
-        res.status(201).send({ message: `${onModel} report submitted successfully.` });
+        return sendSuccess(res, 201, `${onModel} report submitted successfully.`);
     } catch (error) {
-        res.status(500).send({ message: `Error submitting ${onModel.toLowerCase()} report.`, error });
+        return sendError(res, 500, `Error submitting ${onModel.toLowerCase()} report.`, error);
     }
 };
-
 
 const reportUser = async (req, res) => {
     await report(req, res, 'user', 'User');
@@ -40,16 +40,18 @@ const reportBookStory = async (req, res) => {
     await report(req, res, 'bookstory', 'BookStory');
 };
 
-
 // 사용자 신고 목록 조회 API
 const getReportUsers = async (req, res) => {
     const reporterId = req.user._id;
 
     try {
-        const userReports = await Report.find({ reporterId, type: 'user'}).populate('targetId').select('-refreshToken -appleId -__v');
-        res.status(200).send(userReports);
+        const userReports = await Report.find({ reporterId, type: 'user'})
+            .populate('targetId')
+            .select('-refreshToken -appleId -__v');
+        
+        return sendSuccess(res, 200, 'User reports retrieved successfully.', userReports);
     } catch (error) {
-        res.status(500).send({ message: 'Error retrieving user reports.', error});
+        return sendError(res, 500, 'Error retrieving user reports.', error);
     }
 };
 
@@ -58,13 +60,14 @@ const getReportStories = async (req, res) => {
     const reporterId = req.user._id;
 
     try {
-        const storyReports = await Report.find({ reporterId, type: 'bookstory' }).populate('targetId');
-        res.status(200).send(storyReports);
+        const storyReports = await Report.find({ reporterId, type: 'bookstory' })
+            .populate('targetId');
+        
+        return sendSuccess(res, 200, 'Story reports retrieved successfully.', storyReports);
     } catch (error) {
-        res.status(500).send({ message: 'Error retrieving story reports.', error});
+        return sendError(res, 500, 'Error retrieving story reports.', error);
     }
 };
-
 
 module.exports = {
     reportUser,

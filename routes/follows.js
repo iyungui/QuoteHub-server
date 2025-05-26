@@ -11,7 +11,7 @@ const {
     unfollowUser,
     searchUser,
     blockedList
-} = require('../controllers/FollowController');
+} = require('../controllers/followController');
 
 // 팔로우
 router.post('/:userId', ensureAuthenticated, followUser);

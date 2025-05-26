@@ -12,7 +12,7 @@ const {
     getMyFolders,
     updateFolder,
     deleteFolder
-} = require('../controllers/FolderController');
+} = require('../controllers/folderController');
 
 const upload = require('../s3Config');
 

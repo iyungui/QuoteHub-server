@@ -1,8 +1,10 @@
+// controllers/bookStoryCommentController.js
 const mongoose = require('mongoose');
 const User = require('../models/User'); 
 const BookStoryComment = require('../models/BookStoryComment');
 const BookStory = require('../models/BookStory');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
+const { sendSuccess, sendSuccessWithPagination, sendError, sendCountResponse } = require('../utils/responseHelper');
 
 exports.addCommentToBookStory = async (req, res, next) => {
     const { bookStoryId, content, parentCommentId } = req.body; 
@@ -10,29 +12,29 @@ exports.addCommentToBookStory = async (req, res, next) => {
 
     // Check if bookStoryId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(bookStoryId)) {
-        return res.status(400).json({ success: false, message: 'Invalid bookStoryId format' });
+        return sendError(res, 400, 'Invalid bookStoryId format');
     }
 
     try {
         // Check if bookStory exists
         const bookStoryExists = await BookStory.exists({ _id: bookStoryId });
         if (!bookStoryExists) {
-            return res.status(404).json({ success: false, message: 'BookStory not found' });
+            return sendError(res, 404, 'BookStory not found');
         }
         
         // 부모 댓글의 유효성 검사
         if (parentCommentId) {
             const parentComment = await BookStoryComment.findById(parentCommentId);
             if (!parentComment) {
-                return res.status(404).json({ success: false, message: 'Parent comment not found.' });
+                return sendError(res, 404, 'Parent comment not found.');
             }
             // 부모 댓글이 이미 다른 댓글의 대댓글인 경우, 에러 응답
             if (parentComment.parentCommentId) {
-                return res.status(400).json({ success: false, message: 'Replies to replies are not allowed.' });
+                return sendError(res, 400, 'Replies to replies are not allowed.');
             }
             // 새로운 검증 로직 추가: 부모 댓글이 현재 BookstoryId에 속해 있는지 확인
             if (parentComment.bookStoryId.toString() !== bookStoryId) {
-                return res.status(400).json({ success: false, message: 'Parent comment does not belong to the same book story.' });
+                return sendError(res, 400, 'Parent comment does not belong to the same book story.');
             }
         }
 
@@ -49,7 +51,7 @@ exports.addCommentToBookStory = async (req, res, next) => {
         const user = await User.findById(userId, 'nickname profileImage');
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
+            return sendError(res, 404, 'User not found');
         }
 
         const commentResponse = {
@@ -61,10 +63,10 @@ exports.addCommentToBookStory = async (req, res, next) => {
             }
         };
 
-        res.status(201).json({ success: true, data: commentResponse });
+        return sendSuccess(res, 201, 'Comment added successfully.', commentResponse);
     } catch (error) {
         console.error('Error adding comment:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
@@ -72,18 +74,20 @@ exports.getCommentsForBookStory = async (req, res, next) => {
     const { bookStoryId } = req.params;
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
-    const replyPageSize = parseInt(req.query.replyPageSize, 10) || 3; // Set default or take from query
+    const replyPageSize = parseInt(req.query.replyPageSize, 10) || 3;
 
     try {    
         // Validate bookStoryId
         if (!mongoose.Types.ObjectId.isValid(bookStoryId)) {
-            return res.status(400).json({ success: false, message: 'Invalid bookStoryId format' });
+            return sendError(res, 400, 'Invalid bookStoryId format');
         }
+        
         // Check if bookStory exists
         const bookStoryExists = await BookStory.exists({ _id: bookStoryId });
         if (!bookStoryExists) {
-            return res.status(404).json({ success: false, message: 'BookStory not found' });
+            return sendError(res, 404, 'BookStory not found');
         }
+        
         // Fetch root comments
         const rootCommentsQuery = BookStoryComment.find({
             bookStoryId,
@@ -120,21 +124,23 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             })
         );
 
-        res.json({
-            success: true,
+        const totalRootComments = await BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null });
+        const totalPages = calculateTotalPages(totalRootComments, pageSize);
+
+        const responseData = {
             data: commentsWithReplies,
             page,
             pageSize,
-            totalRootComments: await BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null }),
-            totalPages: calculateTotalPages(await BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null }), pageSize)            
-        });
+            totalRootComments,
+            totalPages
+        };
+
+        return sendSuccess(res, 200, 'Comments retrieved successfully.', responseData);
     } catch (error) {
         console.error('Error fetching comments:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
+        return sendError(res, 500, 'Internal Server Error');
     }
 };
-
-
 
 exports.deleteComment = async (req, res, next) => {
     const commentId = req.params.commentId;
@@ -150,13 +156,13 @@ exports.deleteComment = async (req, res, next) => {
         if (!comment) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(404).json({ success: false, message: 'Comment not found.' });
+            return sendError(res, 404, 'Comment not found.');
         }
 
         if (comment.userId.toString() !== userId.toString()) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(403).json({ success: false, message: 'You do not have permission to delete this comment.' });
+            return sendError(res, 403, 'You do not have permission to delete this comment.');
         }
 
         // 대댓글을 포함하여 삭제합니다.
@@ -165,32 +171,32 @@ exports.deleteComment = async (req, res, next) => {
                 { _id: commentId },
                 { parentCommentId: commentId }
             ]
-        }, { session }); // 트랜잭션 세션을 추가합니다.
+        }, { session });
 
-        await session.commitTransaction(); // 모든 변경사항을 커밋합니다.
-        session.endSession(); // 세션을 종료합니다.
+        await session.commitTransaction();
+        session.endSession();
 
-        res.json({ success: true, message: 'Comment and any replies deleted successfully.' });
+        return sendSuccess(res, 200, 'Comment and any replies deleted successfully.');
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
         console.error('Error deleting comment:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error.' });
+        return sendError(res, 500, 'Internal Server Error.');
     }
 };
 
-
-
 exports.getCommentCountForBookStory = async (req, res) => {
     try {
-      const bookStoryId = req.params.bookStoryId;
-      if (!mongoose.Types.ObjectId.isValid(bookStoryId)) {
-        return res.status(400).send({ message: 'Invalid BookStory ID' });
-      }
-  
-      const commentCount = await BookStoryComment.countDocuments({ bookStoryId: bookStoryId });
-      res.json({ commentCount });
+        const bookStoryId = req.params.bookStoryId;
+        if (!mongoose.Types.ObjectId.isValid(bookStoryId)) {
+            return sendError(res, 400, 'Invalid BookStory ID');
+        }
+
+        const commentCount = await BookStoryComment.countDocuments({ bookStoryId: bookStoryId });
+        
+        const responseData = { commentCount };
+        return sendSuccess(res, 200, 'Comment count retrieved successfully.', responseData);
     } catch (error) {
-      res.status(500).send({ message: 'Server error while fetching comment count' });
+        return sendError(res, 500, 'Server error while fetching comment count');
     }
 };
