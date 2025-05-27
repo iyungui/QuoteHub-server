@@ -100,6 +100,24 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             paginateQuery(rootCommentsQuery, page, pageSize)
         ]);
 
+        // Handle empty comments case
+        if (!rootComments || rootComments.length === 0) {
+            const pagination = {
+                currentPage: page,
+                totalPages: 0,
+                pageSize: pageSize,
+                totalItems: 0
+            };
+
+            return sendSuccessWithPagination(
+                res, 
+                200, 
+                'Comments retrieved successfully.', 
+                [], 
+                pagination
+            );
+        }
+
         // Prepare the response
         const commentsWithReplies = await Promise.all(
             rootComments.map(async (comment) => {
@@ -122,10 +140,13 @@ exports.getCommentsForBookStory = async (req, res, next) => {
                 return {
                     ...comment.toObject(),
                     userId: user,
-                    replies: populatedReplies
+                    replies: populatedReplies || []
                 };
             })
         );
+
+        // Ensure commentsWithReplies is always an array
+        const dataArray = Array.isArray(commentsWithReplies) ? commentsWithReplies : [];
 
         const pagination = {
             currentPage: page,
@@ -138,7 +159,7 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             res, 
             200, 
             'Comments retrieved successfully.', 
-            commentsWithReplies, 
+            dataArray, 
             pagination
         );
     } catch (error) {
