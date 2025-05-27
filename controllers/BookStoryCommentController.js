@@ -4,7 +4,7 @@ const User = require('../models/User');
 const BookStoryComment = require('../models/BookStoryComment');
 const BookStory = require('../models/BookStory');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
-const { sendSuccess, sendError } = require('../utils/responseHelper');
+const { sendSuccess, sendError, sendSuccessWithPagination } = require('../utils/responseHelper');
 
 exports.addCommentToBookStory = async (req, res, next) => {
     const { bookStoryId, content, parentCommentId } = req.body; 
@@ -76,27 +76,17 @@ exports.getCommentsForBookStory = async (req, res, next) => {
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
     const replyPageSize = parseInt(req.query.replyPageSize, 10) || 3;
 
-    console.log('=== getCommentsForBookStory START ===');
-    console.log('bookStoryId:', bookStoryId);
-    console.log('page:', page, 'pageSize:', pageSize);
-
     try {    
         // Validate bookStoryId
         if (!mongoose.Types.ObjectId.isValid(bookStoryId)) {
-            console.log('=== VALIDATION ERROR ===');
-            console.log('Invalid bookStoryId format:', bookStoryId);
             return sendError(res, 400, 'Invalid bookStoryId format');
         }
         
         // Check if bookStory exists
         const bookStoryExists = await BookStory.exists({ _id: bookStoryId });
         if (!bookStoryExists) {
-            console.log('=== BOOKSTORY NOT FOUND ===');
-            console.log('BookStory does not exist:', bookStoryId);
             return sendError(res, 404, 'BookStory not found');
         }
-
-        console.log('Validation passed, proceeding to fetch comments...');
         
         // Fetch root comments with pagination
         const rootCommentsQuery = BookStoryComment.find({
@@ -118,17 +108,13 @@ exports.getCommentsForBookStory = async (req, res, next) => {
                 totalItems: 0
             };
 
-            console.log('=== EMPTY COMMENTS CASE ===');
-            console.log('Returning empty array with pagination:', pagination);
-
-            const emptyResponse = {
-                success: true,
-                message: 'Comments retrieved successfully.',
-                data: [],
-                pagination: pagination
-            };
-
-            return res.status(200).json(emptyResponse);
+            return sendSuccessWithPagination(
+                res, 
+                200, 
+                'Comments retrieved successfully.', 
+                [], 
+                pagination
+            );
         }
 
         // Prepare the response with replies
@@ -200,37 +186,15 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             totalItems: totalRootComments
         };
 
-        console.log('=== FINAL RESPONSE DATA ===');
-        console.log('commentsWithReplies length:', commentsWithReplies.length);
-        console.log('pagination:', pagination);
-        console.log('About to call sendSuccessWithPagination...');
-
-        // 직접 응답 구성해서 테스트
-        const responseObj = {
-            success: true,
-            message: 'Comments retrieved successfully.',
-            data: commentsWithReplies,
-            pagination: pagination
-        };
-
-        console.log('Response object keys:', Object.keys(responseObj));
-        console.log('Response data is array:', Array.isArray(responseObj.data));
-        console.log('Response data length:', responseObj.data.length);
-
-        return res.status(200).json(responseObj);
-
-        // 원래 코드 (위의 직접 응답이 작동하면 이걸로 교체)
-        // return sendSuccessWithPagination(
-        //     res, 
-        //     200, 
-        //     'Comments retrieved successfully.', 
-        //     commentsWithReplies, 
-        //     pagination
-        // );
+        return sendSuccessWithPagination(
+            res, 
+            200, 
+            'Comments retrieved successfully.', 
+            commentsWithReplies, 
+            pagination
+        );
     } catch (error) {
-        console.error('=== ERROR OCCURRED ===');
         console.error('Error fetching comments:', error);
-        console.error('Error stack:', error.stack);
         return sendError(res, 500, 'Internal Server Error');
     }
 };
