@@ -11,12 +11,11 @@ const {
     unfollowUser,
     searchUser,
     blockedList
-} = require('../controllers/followController');
+} = require('../controllers/FollowController'); // 대문자 F로 변경
 
 // 팔로우
 router.post('/:userId', ensureAuthenticated, followUser);
 router.get('/check/:userId', ensureAuthenticated, checkFollowStatus);
-
 
 // 팔로워 조회 with pagination
 router.get('/followers/:userId', getFollowers);

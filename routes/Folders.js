@@ -12,7 +12,7 @@ const {
     getMyFolders,
     updateFolder,
     deleteFolder
-} = require('../controllers/folderController');
+} = require('../controllers/FolderController'); // 대문자 F로 변경
 
 const upload = require('../s3Config');
 

@@ -7,7 +7,7 @@ const {
     reportBookStory,
     getReportUsers,
     getReportStories
-} = require('../controllers/reportController');
+} = require('../controllers/ReportController'); // 대문자 R로 변경
 
 router.post('/user', ensureAuthenticated, reportUser);
 router.post('/bookstory', ensureAuthenticated, reportBookStory);
