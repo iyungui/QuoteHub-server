@@ -95,7 +95,10 @@ exports.getCommentsForBookStory = async (req, res, next) => {
         }).sort({ createdAt: -1 });
 
         // Pagination for root comments
-        const rootComments = await paginateQuery(rootCommentsQuery, page, pageSize);
+        const [totalRootComments, rootComments] = await Promise.all([
+            BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null }),
+            paginateQuery(rootCommentsQuery, page, pageSize)
+        ]);
 
         // Prepare the response
         const commentsWithReplies = await Promise.all(
@@ -124,18 +127,20 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             })
         );
 
-        const totalRootComments = await BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null });
-        const totalPages = calculateTotalPages(totalRootComments, pageSize);
-
-        const responseData = {
-            data: commentsWithReplies,
-            page,
-            pageSize,
-            totalRootComments,
-            totalPages
+        const pagination = {
+            currentPage: page,
+            totalPages: calculateTotalPages(totalRootComments, pageSize),
+            pageSize: pageSize,
+            totalItems: totalRootComments
         };
 
-        return sendSuccess(res, 200, 'Comments retrieved successfully.', responseData);
+        return sendSuccessWithPagination(
+            res, 
+            200, 
+            'Comments retrieved successfully.', 
+            commentsWithReplies, 
+            pagination
+        );
     } catch (error) {
         console.error('Error fetching comments:', error);
         return sendError(res, 500, 'Internal Server Error');
