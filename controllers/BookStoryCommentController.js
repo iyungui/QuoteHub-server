@@ -69,7 +69,6 @@ exports.addCommentToBookStory = async (req, res, next) => {
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 exports.getCommentsForBookStory = async (req, res, next) => {
     const { bookStoryId } = req.params;
     const page = parseInt(req.query.page, 10) || 1;
@@ -88,13 +87,12 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             return sendError(res, 404, 'BookStory not found');
         }
         
-        // Fetch root comments
+        // Fetch root comments with pagination
         const rootCommentsQuery = BookStoryComment.find({
             bookStoryId,
             parentCommentId: null
         }).sort({ createdAt: -1 });
 
-        // Pagination for root comments
         const [totalRootComments, rootComments] = await Promise.all([
             BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null }),
             paginateQuery(rootCommentsQuery, page, pageSize)
@@ -118,35 +116,67 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             );
         }
 
-        // Prepare the response
+        // Prepare the response with replies
         const commentsWithReplies = await Promise.all(
             rootComments.map(async (comment) => {
-                // Fetch replies for each comment with a separate pagination
-                const repliesQuery = BookStoryComment.find({
-                    parentCommentId: comment._id
-                }).sort({ createdAt: 1 });
+                try {
+                    // Fetch replies for each comment
+                    const repliesQuery = BookStoryComment.find({
+                        parentCommentId: comment._id
+                    }).sort({ createdAt: 1 });
 
-                const replies = await paginateQuery(repliesQuery, 1, replyPageSize);
+                    const replies = await paginateQuery(repliesQuery, 1, replyPageSize);
 
-                // Populate user details for each reply
-                const populatedReplies = await Promise.all(
-                    replies.map(async (reply) => {
-                        const user = await User.findById(reply.userId, 'nickname profileImage');
-                        return { ...reply.toObject(), userId: user };
-                    })
-                );
-                const user = await User.findById(comment.userId, 'nickname profileImage');
+                    // Populate user details for each reply
+                    const populatedReplies = await Promise.all(
+                        replies.map(async (reply) => {
+                            const user = await User.findById(reply.userId, 'nickname profileImage');
+                            const replyObj = reply.toObject();
+                            return {
+                                _id: replyObj._id.toString(),
+                                userId: user || { nickname: 'Unknown', profileImage: '' },
+                                bookStoryId: replyObj.bookStoryId.toString(),
+                                content: replyObj.content,
+                                parentCommentId: replyObj.parentCommentId ? replyObj.parentCommentId.toString() : null,
+                                createdAt: replyObj.createdAt,
+                                updatedAt: replyObj.updatedAt,
+                                replies: null // replies don't have nested replies
+                            };
+                        })
+                    );
 
-                return {
-                    ...comment.toObject(),
-                    userId: user,
-                    replies: populatedReplies || []
-                };
+                    // Populate user details for the main comment
+                    const user = await User.findById(comment.userId, 'nickname profileImage');
+                    const commentObj = comment.toObject();
+
+                    return {
+                        _id: commentObj._id.toString(),
+                        userId: user || { nickname: 'Unknown', profileImage: '' },
+                        bookStoryId: commentObj.bookStoryId.toString(),
+                        content: commentObj.content,
+                        parentCommentId: commentObj.parentCommentId ? commentObj.parentCommentId.toString() : null,
+                        createdAt: commentObj.createdAt,
+                        updatedAt: commentObj.updatedAt,
+                        replies: populatedReplies.length > 0 ? populatedReplies : null
+                    };
+                } catch (error) {
+                    console.error('Error processing comment:', error);
+                    // Return comment without replies if there's an error
+                    const user = await User.findById(comment.userId, 'nickname profileImage');
+                    const commentObj = comment.toObject();
+                    return {
+                        _id: commentObj._id.toString(),
+                        userId: user || { nickname: 'Unknown', profileImage: '' },
+                        bookStoryId: commentObj.bookStoryId.toString(),
+                        content: commentObj.content,
+                        parentCommentId: commentObj.parentCommentId ? commentObj.parentCommentId.toString() : null,
+                        createdAt: commentObj.createdAt,
+                        updatedAt: commentObj.updatedAt,
+                        replies: null
+                    };
+                }
             })
         );
-
-        // Ensure commentsWithReplies is always an array
-        const dataArray = Array.isArray(commentsWithReplies) ? commentsWithReplies : [];
 
         const pagination = {
             currentPage: page,
@@ -159,7 +189,7 @@ exports.getCommentsForBookStory = async (req, res, next) => {
             res, 
             200, 
             'Comments retrieved successfully.', 
-            dataArray, 
+            commentsWithReplies, 
             pagination
         );
     } catch (error) {
