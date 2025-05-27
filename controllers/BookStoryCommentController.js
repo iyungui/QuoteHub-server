@@ -193,9 +193,7 @@ exports.getCommentCountForBookStory = async (req, res) => {
         }
 
         const commentCount = await BookStoryComment.countDocuments({ bookStoryId: bookStoryId });
-        
-        const responseData = { commentCount };
-        return sendSuccess(res, 200, 'Comment count retrieved successfully.', responseData);
+        return sendSuccess(res, 200, 'Comment count retrieved successfully.', commentCount);
     } catch (error) {
         return sendError(res, 500, 'Server error while fetching comment count');
     }
