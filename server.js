@@ -15,7 +15,7 @@ const bookRoutes = require("./routes/books");
 const bookStoriesRoutes = require("./routes/bookstories");
 const bookStoriesCommentsRoutes = require("./routes/bookstoriesComments");
 const followRoutes = require("./routes/follows");
-const folderRoutes = require("./routes/folders");
+const folderRoutes = require("./routes/Folders");
 const reportRoutes = require("./routes/reportRoutes");
 
 // MongoDB 연결 설정
