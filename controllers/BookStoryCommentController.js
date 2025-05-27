@@ -1,4 +1,4 @@
-// controllers/bookStoryCommentController.js
+// controllers/bookstoryCommentController.js
 const mongoose = require('mongoose');
 const User = require('../models/User'); 
 const BookStoryComment = require('../models/BookStoryComment');

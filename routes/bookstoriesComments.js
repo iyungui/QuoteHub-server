@@ -7,7 +7,7 @@ const {
     getCommentsForBookStory,
     deleteComment,
     getCommentCountForBookStory
- } = require('../controllers/bookStoryCommentController'); // 파일명 수정
+ } = require('../controllers/bookstoryCommentController'); // 파일명 변경
 
 router.post('/', ensureAuthenticated, addCommentToBookStory);
 
