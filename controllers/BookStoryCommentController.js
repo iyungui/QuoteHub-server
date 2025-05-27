@@ -4,7 +4,7 @@ const User = require('../models/User');
 const BookStoryComment = require('../models/BookStoryComment');
 const BookStory = require('../models/BookStory');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
-const { sendSuccess, sendSuccessWithPagination, sendError, sendCountResponse } = require('../utils/responseHelper');
+const { sendSuccess, sendError } = require('../utils/responseHelper');
 
 exports.addCommentToBookStory = async (req, res, next) => {
     const { bookStoryId, content, parentCommentId } = req.body; 
