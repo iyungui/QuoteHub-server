@@ -62,90 +62,32 @@ const generateUniqueNickname = async () => {
 // Apple 로그인 콜백 처리
 const appleCallback = async (req, res) => {
   try {
-    console.log(Date().toString() + " POST /auth/apple/callback");
+    console.log(Date().toString() + " GET /auth/apple/callback");
 
-    const { code, identityToken } = req.body;
+    const response = await auth.accessToken(req.body.code);
+    console.log('Received code:', req.body.code);
     
-    // 입력 데이터 검증
-    if (!code || !identityToken) {
-      return sendError(res, 400, "Authorization code and identity token are required.");
-    }
-
-    console.log('Received authorizationCode:', code);
-    console.log('Received identityToken:', identityToken ? 'Present' : 'Missing');
-
-    // 1. authorizationCode로 Apple 서버와 토큰 교환
-    const appleResponse = await auth.accessToken(code);
-    console.log('Apple server response received');
-    
-    // 2. Apple에서 받은 id_token 디코딩
-    const appleIdToken = jwt.decode(appleResponse.id_token);
-    
-    // 3. 클라이언트에서 받은 identityToken 디코딩 및 검증
-    let clientIdToken;
-    try {
-      clientIdToken = jwt.decode(identityToken);
-      
-      // identityToken의 기본 구조 검증
-      if (!clientIdToken || !clientIdToken.sub || !clientIdToken.aud) {
-        throw new Error("Invalid identity token structure");
-      }
-      
-      // 클라이언트 ID 검증
-      if (clientIdToken.aud !== process.env.APPLE_CLIENT_ID) {
-        throw new Error("Identity token audience mismatch");
-      }
-      
-    } catch (tokenError) {
-      console.error("Identity token validation failed:", tokenError);
-      return sendError(res, 400, "Invalid identity token.");
-    }
-    
-    // 4. 두 토큰의 사용자 ID 일관성 검증
-    if (appleIdToken.sub !== clientIdToken.sub) {
-      console.error("Token subject mismatch:", {
-        appleIdToken: appleIdToken.sub,
-        clientIdToken: clientIdToken.sub
-      });
-      return sendError(res, 400, "Token verification failed.");
-    }
-
-    console.log('Token validation successful for user:', appleIdToken.sub);
-
-    // 5. 사용자 조회 또는 생성
-    let user = await User.findOne({ appleId: appleIdToken.sub });
+    const idToken = jwt.decode(response.id_token);
+    let user = await User.findOne({ appleId: idToken.sub });
 
     if (!user) {
-      console.log('Creating new user for Apple ID:', appleIdToken.sub);
-      
       const nickname = await generateUniqueNickname();
       const newUser = {
-        appleId: appleIdToken.sub,
-        nickname: nickname,
-        // identityToken에서 추가 정보 활용 (선택적)
-        email: clientIdToken.email || null,
-        emailVerified: clientIdToken.email_verified || false
+        appleId: idToken.sub,
+        nickname: nickname
       };
 
       user = new User(newUser);
       await user.save();
-      console.log('New user created with ID:', user._id);
     } else {
-      console.log('Existing user found:', user._id);
-      
-      // 기존 사용자의 리프레시 토큰 업데이트
-      if (appleResponse.refresh_token) {
-        user.refreshToken = appleResponse.refresh_token;
-        await user.save();
-        console.log('User refresh token updated');
-      }
+      user.refreshToken = response.refresh_token;
+      await user.save();
     }
 
-    // 6. JWT 토큰 생성
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // 7. 응답 데이터 생성
+    // 응답 데이터 생성
     const responseData = {
       user: {
         _id: user._id,
@@ -154,7 +96,6 @@ const appleCallback = async (req, res) => {
         profileImage: user.profileImage || "",
         statusMessage: user.statusMessage || null,
         monthlyReadingGoal: user.monthlyReadingGoal || null,
-        email: user.email || null,
         refreshToken: refreshToken,
         followers: user.followers || [],
         following: user.following || []
@@ -163,25 +104,13 @@ const appleCallback = async (req, res) => {
       JWTRefreshToken: refreshToken
     };
 
-    console.log('Apple authentication successful for user:', user._id);
     return sendSuccess(res, 200, 'Apple authentication successful.', responseData);
-    
   } catch (error) {
     console.error("Error during Apple authentication:", error);
     console.error("Full error details:", JSON.stringify(error, null, 2));
 
-    // Apple 서버 응답 에러 상세 로깅
     if (error.response && error.response.data) {
       console.error("Apple Server Response:", error.response.data);
-    }
-
-    // 구체적인 에러 타입별 응답
-    if (error.message && error.message.includes('Token')) {
-      return sendError(res, 400, "Token validation failed.");
-    }
-    
-    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      return sendError(res, 503, "Apple authentication service temporarily unavailable.");
     }
 
     return sendError(res, 500, "An error occurred during the Apple authentication!");
