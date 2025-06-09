@@ -6,49 +6,82 @@ const User = require('../models/User');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
 const { sendSuccess, sendSuccessWithPagination, sendError, sendCountResponse } = require('../utils/responseHelper');
 
+
 // 북스토리 생성
 exports.createBookStory = async (req, res, next) => {
     const { 
-        bookId, quotes, content, isPublic, keywords 
+        bookId, content, isPublic = true, keywords 
     } = req.body;
 
-    // 요청 콘솔 출력
+    // 요청 데이터 로깅
     console.log('Request body:', req.body);
     console.log('Request files:', req.files);
 
     const userId = req.user._id;
     const folderIds = req.body.folderIds || [];
-
     const storyImageURLs = req.files ? req.files.map(file => file.location) : [];
-    
+
     try {
+        // 필수 필드 검증
+        if (!bookId) {
+            return sendError(res, 400, 'Book ID is required.');
+        }
+
         // 책의 유효성 확인
         const book = await Book.findById(bookId);
         if (!book) {
             return sendError(res, 404, 'Book not found.');
         }
 
-        // quotes 배열 검증
-        // if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
-        //     return sendError(res, 400, 'At least one quote is required.');
-        // }
+        // quotes 파싱 및 검증
+        let parsedQuotes;
+        if (typeof req.body.quotes === 'string') {
+            try {
+                parsedQuotes = JSON.parse(req.body.quotes);
+                console.log('Parsed quotes from JSON string:', parsedQuotes);
+            } catch (error) {
+                console.error('Error parsing quotes JSON:', error);
+                return sendError(res, 400, 'Invalid quotes format. Must be valid JSON.');
+            }
+        } else if (Array.isArray(req.body.quotes)) {
+            parsedQuotes = req.body.quotes;
+            console.log('Quotes received as array:', parsedQuotes);
+        } else {
+            return sendError(res, 400, 'Quotes field is required and must be an array.');
+        }
+
+        // quotes 배열 검증 (필수 필드)
+        if (!parsedQuotes || !Array.isArray(parsedQuotes) || parsedQuotes.length === 0) {
+            return sendError(res, 400, 'At least one quote is required.');
+        }
 
         // quotes 배열의 각 항목 검증
-        // for (const quoteItem of quotes) {
-        //     if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
-        //         return sendError(res, 400, 'Each quote must contain a valid quote text.');
-        //     }
-        //     if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
-        //         return sendError(res, 400, 'Page number must be a positive number.');
-        //     }
-        // }
+        for (const quoteItem of parsedQuotes) {
+            if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
+                return sendError(res, 400, 'Each quote must contain a valid quote text.');
+            }
+            if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
+                return sendError(res, 400, 'Page number must be a positive number.');
+            }
+        }
 
         const bookStory = new BookStory({
             userId,
             bookId,
-            quotes, 
+            quotes: parsedQuotes, 
             content, 
             storyImageURLs, 
+            isPublic,
+            keywords,
+            folderIds
+        });
+
+        console.log('Creating BookStory with data:', {
+            userId,
+            bookId,
+            quotes: parsedQuotes,
+            content,
+            storyImageURLs,
             isPublic,
             keywords,
             folderIds
