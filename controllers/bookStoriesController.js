@@ -25,19 +25,19 @@ exports.createBookStory = async (req, res, next) => {
         }
 
         // quotes 배열 검증
-        if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
-            return sendError(res, 400, 'At least one quote is required.');
-        }
+        // if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+        //     return sendError(res, 400, 'At least one quote is required.');
+        // }
 
         // quotes 배열의 각 항목 검증
-        for (const quoteItem of quotes) {
-            if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
-                return sendError(res, 400, 'Each quote must contain a valid quote text.');
-            }
-            if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
-                return sendError(res, 400, 'Page number must be a positive number.');
-            }
-        }
+        // for (const quoteItem of quotes) {
+        //     if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
+        //         return sendError(res, 400, 'Each quote must contain a valid quote text.');
+        //     }
+        //     if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
+        //         return sendError(res, 400, 'Page number must be a positive number.');
+        //     }
+        // }
 
         const bookStory = new BookStory({
             userId,
