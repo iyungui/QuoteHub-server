@@ -12,11 +12,15 @@ exports.createBookStory = async (req, res, next) => {
         bookId, quotes, content, isPublic, keywords 
     } = req.body;
 
+    // 요청 콘솔 출력
+    console.log('Request body:', req.body);
+    console.log('Request files:', req.files);
+
     const userId = req.user._id;
     const folderIds = req.body.folderIds || [];
 
     const storyImageURLs = req.files ? req.files.map(file => file.location) : [];
-
+    
     try {
         // 책의 유효성 확인
         const book = await Book.findById(bookId);
