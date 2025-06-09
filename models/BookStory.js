@@ -4,7 +4,12 @@ const Schema = mongoose.Schema;
 const bookStorySchema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true },
-    quote: { type: String, required: true },
+    quotes: [
+        {
+            quote: { type: String, required: true },
+            page: { type: Number, required: false }
+        }
+    ],
     content: { type: String, required: true },
     storyImageURLs: [{ type: String }],  // 여러 이미지 URL을 담기 위해 배열로 정의
     isPublic: { type: Boolean, default: true },

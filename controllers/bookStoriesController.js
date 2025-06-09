@@ -9,7 +9,7 @@ const { sendSuccess, sendSuccessWithPagination, sendError, sendCountResponse } =
 // 북스토리 생성
 exports.createBookStory = async (req, res, next) => {
     const { 
-        bookId, quote, content, isPublic, keywords 
+        bookId, quotes, content, isPublic, keywords 
     } = req.body;
 
     const userId = req.user._id;
@@ -24,10 +24,25 @@ exports.createBookStory = async (req, res, next) => {
             return sendError(res, 404, 'Book not found.');
         }
 
+        // quotes 배열 검증
+        if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+            return sendError(res, 400, 'At least one quote is required.');
+        }
+
+        // quotes 배열의 각 항목 검증
+        for (const quoteItem of quotes) {
+            if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
+                return sendError(res, 400, 'Each quote must contain a valid quote text.');
+            }
+            if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
+                return sendError(res, 400, 'Page number must be a positive number.');
+            }
+        }
+
         const bookStory = new BookStory({
             userId,
             bookId,
-            quote, 
+            quotes, 
             content, 
             storyImageURLs, 
             isPublic,
@@ -43,6 +58,7 @@ exports.createBookStory = async (req, res, next) => {
 
         return sendSuccess(res, 201, 'BookStory created successfully.', populatedBookStory);
     } catch (error) {
+        console.error('Error creating book story:', error);
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
@@ -353,7 +369,7 @@ exports.updateBookStory = async (req, res, next) => {
     const bookStoryId = req.params.id;
     const userId = req.user._id;
 
-    const { quote, content, isPublic } = req.body;
+    const { quotes, content, isPublic } = req.body;
     let { keywords, folderIds } = req.body;
     const updatedStoryImageURLs = req.files ? req.files.map(file => file.location) : [];
 
@@ -363,17 +379,34 @@ exports.updateBookStory = async (req, res, next) => {
     // Ensure keywords is an array
     keywords = Array.isArray(keywords) ? keywords : (keywords ? [keywords] : []);
 
-    // Construct update object
-    const update = {
-        ...(quote && { quote }),
-        ...(content && { content }),
-        ...(isPublic !== undefined && { isPublic }),
-        ...(keywords.length && { keywords }),
-        ...(folderIds.length && { folderIds }),
-        ...(updatedStoryImageURLs.length && { storyImageURLs: updatedStoryImageURLs }),
-    };
-
     try {
+        // quotes 배열 검증 (제공된 경우)
+        if (quotes !== undefined) {
+            if (!Array.isArray(quotes) || quotes.length === 0) {
+                return sendError(res, 400, 'Quotes must be a non-empty array.');
+            }
+
+            // quotes 배열의 각 항목 검증
+            for (const quoteItem of quotes) {
+                if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
+                    return sendError(res, 400, 'Each quote must contain a valid quote text.');
+                }
+                if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
+                    return sendError(res, 400, 'Page number must be a positive number.');
+                }
+            }
+        }
+
+        // Construct update object
+        const update = {
+            ...(quotes && { quotes }),
+            ...(content && { content }),
+            ...(isPublic !== undefined && { isPublic }),
+            ...(keywords.length && { keywords }),
+            ...(folderIds.length && { folderIds }),
+            ...(updatedStoryImageURLs.length && { storyImageURLs: updatedStoryImageURLs }),
+        };
+
         // Update the document
         const bookStory = await BookStory.findOneAndUpdate(
             { _id: bookStoryId, userId: userId },
@@ -393,6 +426,7 @@ exports.updateBookStory = async (req, res, next) => {
     }
 };
 
+// 조회 (ID로 단일 북스토리 조회)
 exports.getBookStoryById = async (req, res, next) => {
     const bookStoryId = req.params.id;
 
@@ -442,8 +476,10 @@ exports.deleteBookStory = async (req, res, next) => {
     } catch (error) {
         console.error('Error deleting book story:', error);
         // 트랜잭션 중 에러 발생 시 롤백
-        await session.abortTransaction();
-        session.endSession();
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
