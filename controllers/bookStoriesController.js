@@ -13,10 +13,6 @@ exports.createBookStory = async (req, res, next) => {
         bookId, content, isPublic = true, keywords 
     } = req.body;
 
-    // 요청 데이터 로깅
-    console.log('Request body:', req.body);
-    console.log('Request files:', req.files);
-
     const userId = req.user._id;
     const folderIds = req.body.folderIds || [];
     const storyImageURLs = req.files ? req.files.map(file => file.location) : [];
@@ -38,7 +34,6 @@ exports.createBookStory = async (req, res, next) => {
         if (typeof req.body.quotes === 'string') {
             try {
                 parsedQuotes = JSON.parse(req.body.quotes);
-                console.log('Parsed quotes from JSON string:', parsedQuotes);
             } catch (error) {
                 console.error('Error parsing quotes JSON:', error);
                 return sendError(res, 400, 'Invalid quotes format. Must be valid JSON.');
@@ -71,17 +66,6 @@ exports.createBookStory = async (req, res, next) => {
             quotes: parsedQuotes, 
             content, 
             storyImageURLs, 
-            isPublic,
-            keywords,
-            folderIds
-        });
-
-        console.log('Creating BookStory with data:', {
-            userId,
-            bookId,
-            quotes: parsedQuotes,
-            content,
-            storyImageURLs,
             isPublic,
             keywords,
             folderIds
@@ -417,26 +401,40 @@ exports.updateBookStory = async (req, res, next) => {
     keywords = Array.isArray(keywords) ? keywords : (keywords ? [keywords] : []);
 
     try {
-        // quotes 배열 검증 (제공된 경우)
-        if (quotes !== undefined) {
-            if (!Array.isArray(quotes) || quotes.length === 0) {
-                return sendError(res, 400, 'Quotes must be a non-empty array.');
+        // quotes 파싱 및 검증
+        let parsedQuotes;
+        if (typeof req.body.quotes === 'string') {
+            try {
+                parsedQuotes = JSON.parse(req.body.quotes);
+            } catch (error) {
+                console.error('Error parsing quotes JSON:', error);
+                return sendError(res, 400, 'Invalid quotes format. Must be valid JSON.');
             }
+        } else if (Array.isArray(req.body.quotes)) {
+            parsedQuotes = req.body.quotes;
+            console.log('Quotes received as array:', parsedQuotes);
+        } else {
+            return sendError(res, 400, 'Quotes field is required and must be an array.');
+        }
 
-            // quotes 배열의 각 항목 검증
-            for (const quoteItem of quotes) {
-                if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
-                    return sendError(res, 400, 'Each quote must contain a valid quote text.');
-                }
-                if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
-                    return sendError(res, 400, 'Page number must be a positive number.');
-                }
+        // quotes 배열 검증 (필수 필드)
+        if (!parsedQuotes || !Array.isArray(parsedQuotes) || parsedQuotes.length === 0) {
+            return sendError(res, 400, 'At least one quote is required.');
+        }
+
+        // quotes 배열의 각 항목 검증
+        for (const quoteItem of parsedQuotes) {
+            if (!quoteItem.quote || typeof quoteItem.quote !== 'string' || quoteItem.quote.trim() === '') {
+                return sendError(res, 400, 'Each quote must contain a valid quote text.');
+            }
+            if (quoteItem.page !== undefined && (typeof quoteItem.page !== 'number' || quoteItem.page < 0)) {
+                return sendError(res, 400, 'Page number must be a positive number.');
             }
         }
 
         // Construct update object
         const update = {
-            ...(quotes && { quotes }),
+            ...(quotes && { parsedQuotes }),
             ...(content && { content }),
             ...(isPublic !== undefined && { isPublic }),
             ...(keywords.length && { keywords }),
