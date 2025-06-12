@@ -434,7 +434,7 @@ exports.updateBookStory = async (req, res, next) => {
 
         // Construct update object
         const update = {
-            ...(quotes && { parsedQuotes }),
+            quotes: parsedQuotes,
             ...(content && { content }),
             ...(isPublic !== undefined && { isPublic }),
             ...(keywords.length && { keywords }),
