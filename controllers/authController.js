@@ -9,7 +9,7 @@ const { sendSuccess, sendError } = require('../utils/responseHelper');
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET_KEY;
 
-// Apple Auth 설정 - env에서 string으로 가져오기
+// Apple Auth 설정
 const appleAuthConfig = {
   client_id: process.env.APPLE_CLIENT_ID,
   team_id: process.env.APPLE_TEAM_ID,
@@ -18,7 +18,6 @@ const appleAuthConfig = {
   scope: "name"
 };
 
-// Apple Auth 인스턴스 생성 - private key를 env에서 가져오기
 const auth = new AppleAuth(
   appleAuthConfig,
   process.env.APPLE_PRIVATE_KEY ? process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n') : '',
@@ -62,7 +61,7 @@ const generateUniqueNickname = async () => {
 // Apple 로그인 콜백 처리
 const appleCallback = async (req, res) => {
   try {
-    console.log(Date().toString() + " GET /auth/apple/callback");
+    console.log(Date().toString() + " POST /auth/apple/callback");
 
     const response = await auth.accessToken(req.body.code);
     console.log('Received code:', req.body.code);
@@ -87,71 +86,83 @@ const appleCallback = async (req, res) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // 응답 데이터 생성
+    // 간소화된 사용자 정보 (민감한 정보 제외)
+    const userData = {
+      _id: user._id,
+      nickname: user.nickname,
+      profileImage: user.profileImage || "",
+      statusMessage: user.statusMessage || null,
+      monthlyReadingGoal: user.monthlyReadingGoal || null,
+      followers: user.followers || [],
+      following: user.following || []
+    };
+
+    // 간소화된 응답 데이터
     const responseData = {
-      user: {
-        _id: user._id,
-        appleId: user.appleId,
-        nickname: user.nickname,
-        profileImage: user.profileImage || "",
-        statusMessage: user.statusMessage || null,
-        monthlyReadingGoal: user.monthlyReadingGoal || null,
-        refreshToken: refreshToken,
-        followers: user.followers || [],
-        following: user.following || []
-      },
-      JWTAccessToken: accessToken,
-      JWTRefreshToken: refreshToken
+      user: userData,
+      accessToken: accessToken,
+      refreshToken: refreshToken
     };
 
     return sendSuccess(res, 200, 'Apple authentication successful.', responseData);
   } catch (error) {
     console.error("Error during Apple authentication:", error);
-    console.error("Full error details:", JSON.stringify(error, null, 2));
-
-    if (error.response && error.response.data) {
-      console.error("Apple Server Response:", error.response.data);
-    }
-
     return sendError(res, 500, "An error occurred during the Apple authentication!");
   }
 };
 
-// 프로필 입력 (첫 로그인 후)
-const inputProfile = async (req, res) => {
+// 닉네임 중복 체크
+const checkNicknameDuplicate = async (req, res) => {
   try {
-    let user = await User.findById(req.user._id);
-    if (!user) {
+    const { nickname } = req.query;
+    
+    if (!nickname) {
+      return sendError(res, 400, "Nickname is required!");
+    }
+
+    const existingUser = await User.findOne({ nickname: nickname });
+    
+    if (existingUser) {
+      // 현재 사용자가 자신의 닉네임을 체크하는 경우는 중복이 아님
+      if (req.user && existingUser._id.toString() === req.user._id.toString()) {
+        return sendSuccess(res, 200, "Nickname is available.", { available: true });
+      }
+      return sendSuccess(res, 200, "Nickname is already taken.", { available: false });
+    }
+
+    return sendSuccess(res, 200, "Nickname is available.", { available: true });
+  } catch (error) {
+    console.error(error);
+    return sendError(res, 500, "An error occurred while checking nickname!");
+  }
+};
+
+// 닉네임 변경
+const changeNickname = async (req, res) => {
+  try {
+    const { nickname } = req.body;
+    
+    if (!nickname) {
+      return sendError(res, 400, "Nickname is required!");
+    }
+
+    // 중복 닉네임 체크
+    const existingUser = await User.findOne({ nickname: nickname });
+    if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+      return sendError(res, 400, "Nickname already in use!");
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id, 
+      { nickname: nickname }, 
+      { new: true }
+    ).select("-refreshToken -appleId -__v");
+    
+    if (!updatedUser) {
       return sendError(res, 404, "User not found!");
     }
 
-    const updateFields = ["nickname", "statusMessage"];
-    let updatedData = {};
-
-    // 중복 닉네임 체크
-    if (req.body.nickname) {
-      const existingUserWithNickname = await User.findOne({
-        nickname: req.body.nickname,
-      });
-      if (existingUserWithNickname && existingUserWithNickname._id.toString() !== user._id.toString()) {
-        return sendError(res, 400, "Nickname already in use!");
-      }
-    }
-
-    updateFields.forEach((field) => {
-      if (req.body[field]) {
-        updatedData[field] = req.body[field];
-      }
-    });
-
-    if (req.file) {
-      updatedData.profileImage = req.file.location;
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(req.user._id, updatedData, { new: true })
-      .select("-refreshToken -appleId -__v");
-    
-    return sendSuccess(res, 200, "Profile updated successfully!", updatedUser);
+    return sendSuccess(res, 200, "Nickname updated successfully!", updatedUser);
   } catch (error) {
     console.error(error);
     if (error.code === 11000 && error.keyPattern && error.keyPattern.nickname) {
@@ -161,11 +172,12 @@ const inputProfile = async (req, res) => {
   }
 };
 
-// JWT 액세스 토큰 갱신
+// JWT 액세스 토큰 갱신 - 일관성을 위해 Authorization 헤더 사용
 const renewAccessToken = async (req, res) => {
   try {
-    const refreshToken = req.headers["authorization"]
-      ? req.headers["authorization"].split("Bearer ")[1]
+    const authHeader = req.headers["authorization"];
+    const refreshToken = authHeader && authHeader.startsWith("Bearer ") 
+      ? authHeader.split("Bearer ")[1] 
       : null;
 
     if (!refreshToken) {
@@ -188,12 +200,17 @@ const renewAccessToken = async (req, res) => {
   }
 };
 
-// 토큰 검증 및 자동 로그인
+// 토큰 검증 및 자동 로그인 - 일관성을 위해 Authorization 헤더 사용
 const validateToken = async (req, res) => {
-  const accessToken = req.headers.authorization
-    ? req.headers.authorization.split(" ")[1]
+  const authHeader = req.headers["authorization"];
+  const accessToken = authHeader && authHeader.startsWith("Bearer ") 
+    ? authHeader.split("Bearer ")[1] 
     : null;
-  const refreshToken = req.headers["x-refresh-token"];
+  
+  const refreshAuthHeader = req.headers["x-refresh-token"];
+  const refreshToken = refreshAuthHeader && refreshAuthHeader.startsWith("Bearer ")
+    ? refreshAuthHeader.split("Bearer ")[1]
+    : refreshAuthHeader; // Bearer 없이도 허용
 
   if (!accessToken || !refreshToken) {
     return sendError(res, 400, "Access or refresh token not provided.");
@@ -214,8 +231,8 @@ const validateToken = async (req, res) => {
         
         const responseData = {
           valid: false,
-          newAccessToken,
-          newRefreshToken
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken
         };
         
         return sendSuccess(res, 200, "New tokens generated.", responseData);
@@ -275,7 +292,7 @@ const revokeAccount = async (req, res) => {
     await User.deleteOne({ _id: user._id }, { session });
 
     await session.commitTransaction();
-    return sendSuccess(res, 200, "User data and token revoked successfully!");
+    return sendSuccess(res, 200, "User data and token revoked successfully!", { revoked: true });
   } catch (error) {
     await session.abortTransaction();
     console.error(error);
@@ -287,7 +304,8 @@ const revokeAccount = async (req, res) => {
 
 module.exports = {
   appleCallback,
-  inputProfile,
+  checkNicknameDuplicate,
+  changeNickname,
   renewAccessToken,
   validateToken,
   revokeAccount

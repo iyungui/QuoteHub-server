@@ -5,7 +5,8 @@ const router = express.Router();
 // Controllers
 const { 
   appleCallback, 
-  inputProfile, 
+  checkNicknameDuplicate,
+  changeNickname, 
   renewAccessToken, 
   validateToken, 
   revokeAccount 
@@ -33,17 +34,26 @@ function optionalAuthentication(req, res, next) {
 // Apple 로그인 콜백
 router.post("/auth/apple/callback", appleCallback);
 
-// 프로필 입력 (첫 로그인 후)
-router.post("/auth/inputProfile", ensureAuthenticated, upload.single("profileImage"), inputProfile);
+// 닉네임 중복 체크 (GET 방식으로 변경, 선택적 인증)
+router.get("/auth/check-nickname", (req, res, next) => {
+  // Authorization 헤더가 있으면 인증 미들웨어 적용
+  if (req.headers.authorization) {
+    return ensureAuthenticated(req, res, next);
+  }
+  next();
+}, checkNicknameDuplicate);
+
+// 닉네임 변경 (inputProfile 대신)
+router.post("/auth/change-nickname", ensureAuthenticated, changeNickname);
 
 // JWT 액세스 토큰 갱신
-router.post("/renew-access-token", renewAccessToken);
+router.post("/auth/renew-token", renewAccessToken);
 
 // 토큰 검증 및 자동 로그인
-router.post("/validate-token", validateToken);
+router.post("/auth/validate-token", validateToken);
 
 // 계정 탈퇴
-router.post("/revoke", ensureAuthenticated, revokeAccount);
+router.post("/auth/revoke", ensureAuthenticated, revokeAccount);
 
 // ============= 사용자 관리 라우트 =============
 // 사용자 프로필 조회 (자신 또는 다른 사용자)
