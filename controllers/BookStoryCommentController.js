@@ -92,7 +92,7 @@ exports.getCommentsForBookStory = async (req, res, next) => {
         const rootCommentsQuery = BookStoryComment.find({
             bookStoryId,
             parentCommentId: null
-        }).sort({ createdAt: -1 });
+        }).sort({ updatedAt: -1 });
 
         const [totalRootComments, rootComments] = await Promise.all([
             BookStoryComment.countDocuments({ bookStoryId, parentCommentId: null }),
@@ -124,7 +124,7 @@ exports.getCommentsForBookStory = async (req, res, next) => {
                     // Fetch replies for each comment
                     const repliesQuery = BookStoryComment.find({
                         parentCommentId: comment._id
-                    }).sort({ createdAt: 1 });
+                    }).sort({ updatedAt: 1 });
 
                     const replies = await paginateQuery(repliesQuery, 1, replyPageSize);
 

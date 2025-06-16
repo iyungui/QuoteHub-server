@@ -20,7 +20,7 @@ exports.getAllPublicBookStoriesByFolder = async (req, res) => {
         const baseQuery = BookStory.find({ folderIds: folderId, isPublic: true })
             .populate('userId', 'nickname profileImage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ folderIds: folderId, isPublic: true }),
@@ -70,7 +70,7 @@ exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
         const baseQuery = BookStory.find({ userId: friendId, folderIds: folderId, isPublic: true })
             .populate('userId', 'nickname profileImage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ userId: friendId, folderIds: folderId, isPublic: true }),
@@ -121,7 +121,7 @@ exports.getMyBookStoriesByFolder = async (req, res) => {
         const baseQuery = BookStory.find({ userId, folderIds: folderId })
             .populate('userId', 'nickname profileImage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ userId, folderIds: folderId }),
@@ -203,7 +203,7 @@ exports.getAllFolders = async (req, res) => {
     try {
         const baseQuery = Folder.find({ isPublic: true })
             .populate('userId', 'nickname profileImage')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, folders] = await Promise.all([
             Folder.countDocuments({ isPublic: true }),
@@ -233,7 +233,7 @@ exports.getUserFolders = async (req, res) => {
     try {
         const baseQuery = Folder.find({ userId: userId, isPublic: true })
             .populate('userId', 'nickname profileImage')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, folders] = await Promise.all([
             Folder.countDocuments({ userId: userId, isPublic: true }),
@@ -263,7 +263,7 @@ exports.getMyFolders = async (req, res) => {
     try {
         const baseQuery = Folder.find({ userId: userId })
             .populate('userId', 'nickname profileImage')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, folders] = await Promise.all([
             Folder.countDocuments({ userId: userId }),

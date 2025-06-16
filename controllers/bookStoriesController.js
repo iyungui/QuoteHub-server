@@ -123,7 +123,7 @@ exports.getAllPublicBookStories = async (req, res, next) => {
         const baseQuery = BookStory.find({ isPublic: true })
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ isPublic: true }),
             paginateQuery(baseQuery, page, pageSize)
@@ -159,7 +159,7 @@ exports.getFriendPublicBookStories = async (req, res, next) => {
         const baseQuery = BookStory.find({ userId: friendId, isPublic: true })
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ userId: friendId, isPublic: true }),
@@ -196,7 +196,7 @@ exports.getMyBookStories = async (req, res, next) => {
         const baseQuery = BookStory.find({ userId })
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
             BookStory.countDocuments({ userId }),
@@ -247,7 +247,7 @@ exports.getMyPublicBookStoriesWithKeyword = async (req, res, next) => {
         const bookStoriesQuery = BookStory.find(queryCondition)
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         // Execute the paginated query
         const bookStoriesPromise = paginateQuery(bookStoriesQuery, page, pageSize);
@@ -310,7 +310,7 @@ exports.getFriendPublicBookStoriesWithKeyword = async (req, res, next) => {
         const bookStoriesQuery = BookStory.find(queryCondition)
             .populate('userId', 'nickname profileImage statusMessage') 
             .populate('bookId')
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         // Execute the paginated query
         const bookStoriesPromise = paginateQuery(bookStoriesQuery, page, pageSize);
@@ -361,7 +361,7 @@ exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
         const bookStoriesQuery = BookStory.find(queryCondition)
         .populate('userId', 'nickname profileImage statusMessage') 
         .populate('bookId')
-        .sort({ createdAt: -1 });
+        .sort({ updatedAt: -1 });
 
         // 페이지네이션을 적용하여 데이터를 조회합니다.
         const bookStories = await paginateQuery(bookStoriesQuery, page, pageSize);
