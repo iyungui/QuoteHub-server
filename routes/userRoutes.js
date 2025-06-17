@@ -60,7 +60,7 @@ router.post("/auth/revoke", ensureAuthenticated, revokeAccount);
 router.get("/profile/:userId?", optionalAuthentication, getUserProfile);
 
 // 사용자 프로필 업데이트
-router.put("/update", ensureAuthenticated, upload.single("profileImage"), updateUserProfile);
+router.put("/profile", ensureAuthenticated, upload.single("profileImage"), updateUserProfile);
 
 // 사용자 목록 조회 (관리자용)
 router.get("/list/users", getUserList);
