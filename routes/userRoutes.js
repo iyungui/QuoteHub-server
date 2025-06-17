@@ -63,6 +63,6 @@ router.get("/profile/:userId?", optionalAuthentication, getUserProfile);
 router.put("/profile", ensureAuthenticated, upload.single("profileImage"), updateUserProfile);
 
 // 사용자 목록 조회 (관리자용)
-router.get("/list/users", getUserList);
+router.get("/profileList/", getUserList);
 
 module.exports = router;
