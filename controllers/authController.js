@@ -92,7 +92,6 @@ const appleCallback = async (req, res) => {
       nickname: user.nickname,
       profileImage: user.profileImage || "",
       statusMessage: user.statusMessage || null,
-      monthlyReadingGoal: user.monthlyReadingGoal || null,
       followers: user.followers || [],
       following: user.following || []
     };

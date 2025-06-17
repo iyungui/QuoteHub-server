@@ -106,7 +106,7 @@ exports.getUserBookStoryCount = async (req, res, next) => {
 
     try {
         const count = await BookStory.countDocuments(query);
-        return sendCountResponse(res, 200, 'BookStory count retrieved successfully.', count);
+        return sendSuccess(res, 200, 'BookStory count retrieved successfully.', count);
     } catch (error) {
         console.error('Error counting book stories:', error);
         return sendError(res, 500, 'Internal Server Error.');

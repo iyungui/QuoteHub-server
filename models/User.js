@@ -7,7 +7,6 @@ const userSchema = new Schema({
   nickname: { type: String, default: "", unique: true },
   profileImage: { type: String, default: "" },
   statusMessage: { type: String, default: null },
-  monthlyReadingGoal: { type: Number, default: null },
   refreshToken: { type: String, default: "" },
   followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
   following: [{ type: Schema.Types.ObjectId, ref: "User" }],
