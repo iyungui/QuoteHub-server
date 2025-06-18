@@ -4,7 +4,7 @@ const Book = require('../models/Book');
 const BookStoryComment = require('../models/BookStoryComment');
 const User = require('../models/User');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
-const { sendSuccess, sendSuccessWithPagination, sendError, sendCountResponse } = require('../utils/responseHelper');
+const { sendSuccess, sendSuccessWithPagination, sendError } = require('../utils/responseHelper');
 
 
 // 북스토리 생성
@@ -60,6 +60,36 @@ exports.createBookStory = async (req, res, next) => {
             }
         }
 
+        // folderIds 파싱 및 검증
+        let parsedFolderIds = [];
+        if (req.body.folderIds) {
+            if (typeof req.body.folderIds === 'string') {
+                try {
+                    parsedFolderIds = JSON.parse(req.body.folderIds);
+                } catch (error) {
+                    console.error('Error parsing folderIds JSON:', error);
+                    return sendError(res, 400, 'Invalid folderIds format. Must be valid JSON array.');
+                }
+            } else if (Array.isArray(req.body.folderIds)) {
+                parsedFolderIds = req.body.folderIds;
+            }
+        }
+
+        // keywords 파싱 및 검증
+        let parsedKeywords = [];
+        if (req.body.keywords) {
+            if (typeof req.body.keywords === 'string') {
+                try {
+                    parsedKeywords = JSON.parse(req.body.keywords);
+                } catch (error) {
+                    console.error('Error parsing keywords JSON:', error);
+                    return sendError(res, 400, 'Invalid keywords format. Must be valid JSON array.');
+                }
+            } else if (Array.isArray(req.body.keywords)) {
+                parsedKeywords = req.body.keywords;
+            }
+        }
+
         const bookStory = new BookStory({
             userId,
             bookId,
@@ -67,15 +97,15 @@ exports.createBookStory = async (req, res, next) => {
             content, 
             storyImageURLs, 
             isPublic,
-            keywords,
-            folderIds
+            keywords: parsedKeywords,
+            folderIds: parsedFolderIds
         });
 
         const savedBookStory = await bookStory.save();
 
         const populatedBookStory = await BookStory.findById(savedBookStory._id)
-        .populate('userId', 'nickname profileImage statusMessage')
-        .populate('bookId');
+            .populate('userId', 'nickname profileImage statusMessage')
+            .populate('bookId');
 
         return sendSuccess(res, 201, 'BookStory created successfully.', populatedBookStory);
     } catch (error) {
