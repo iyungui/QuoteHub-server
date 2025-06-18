@@ -415,20 +415,12 @@ exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 exports.updateBookStory = async (req, res, next) => {
     const bookStoryId = req.params.id;
     const userId = req.user._id;
 
-    const { quotes, content, isPublic } = req.body;
-    let { keywords, folderIds } = req.body;
+    const { content, isPublic } = req.body;
     const updatedStoryImageURLs = req.files ? req.files.map(file => file.location) : [];
-
-    // Ensure folderIds is an array
-    folderIds = Array.isArray(folderIds) ? folderIds : (folderIds ? [folderIds] : []);
-
-    // Ensure keywords is an array
-    keywords = Array.isArray(keywords) ? keywords : (keywords ? [keywords] : []);
 
     try {
         // quotes 파싱 및 검증
@@ -462,14 +454,44 @@ exports.updateBookStory = async (req, res, next) => {
             }
         }
 
+        // folderIds 파싱 및 검증
+        let parsedFolderIds = [];
+        if (req.body.folderIds) {
+            if (typeof req.body.folderIds === 'string') {
+                try {
+                    parsedFolderIds = JSON.parse(req.body.folderIds);
+                } catch (error) {
+                    console.error('Error parsing folderIds JSON:', error);
+                    return sendError(res, 400, 'Invalid folderIds format. Must be valid JSON array.');
+                }
+            } else if (Array.isArray(req.body.folderIds)) {
+                parsedFolderIds = req.body.folderIds;
+            }
+        }
+
+        // keywords 파싱 및 검증
+        let parsedKeywords = [];
+        if (req.body.keywords) {
+            if (typeof req.body.keywords === 'string') {
+                try {
+                    parsedKeywords = JSON.parse(req.body.keywords);
+                } catch (error) {
+                    console.error('Error parsing keywords JSON:', error);
+                    return sendError(res, 400, 'Invalid keywords format. Must be valid JSON array.');
+                }
+            } else if (Array.isArray(req.body.keywords)) {
+                parsedKeywords = req.body.keywords;
+            }
+        }
+
         // Construct update object
         const update = {
             quotes: parsedQuotes,
-            ...(content && { content }),
+            ...(content !== undefined && { content }),
             ...(isPublic !== undefined && { isPublic }),
-            ...(keywords.length && { keywords }),
-            ...(folderIds.length && { folderIds }),
-            ...(updatedStoryImageURLs.length && { storyImageURLs: updatedStoryImageURLs }),
+            ...(parsedKeywords.length > 0 && { keywords: parsedKeywords }),
+            ...(parsedFolderIds.length > 0 && { folderIds: parsedFolderIds }),
+            ...(updatedStoryImageURLs.length > 0 && { storyImageURLs: updatedStoryImageURLs }),
         };
 
         // Update the document
@@ -490,7 +512,6 @@ exports.updateBookStory = async (req, res, next) => {
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
-
 // 조회 (ID로 단일 북스토리 조회)
 exports.getBookStoryById = async (req, res, next) => {
     const bookStoryId = req.params.id;
