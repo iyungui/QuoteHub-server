@@ -199,7 +199,7 @@ exports.getCommentsForBookStory = async (req, res, next) => {
     }
 };
 
-// bookstoryCommentController.js에 추가
+// bookStoryCommentController.js에 추가
 exports.updateComment = async (req, res, next) => {
     const commentId = req.params.commentId;
     const { content } = req.body;
