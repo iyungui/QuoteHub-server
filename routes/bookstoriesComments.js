@@ -5,7 +5,7 @@ const ensureAuthenticated = require('../middleware/ensureAuthenticated');
 const {
     addCommentToBookStory,
     getCommentsForBookStory,
-    updateComment
+    updateComment,
     deleteComment,
     getCommentCountForBookStory
 } = require('../controllers/BookStoryCommentController'); // 대문자 B로 변경
