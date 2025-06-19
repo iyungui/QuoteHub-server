@@ -48,7 +48,7 @@ app.use("/book", bookRoutes);
 app.use("/bookstories", bookStoriesRoutes);
 app.use("/bookstoriesComments", bookStoriesCommentsRoutes);
 app.use("/folder", folderRoutes);
-app.use("/reports", reportRoutes);
+app.use("/block-report", reportRoutes);
 
 // 에러 핸들링 미들웨어
 app.use((err, req, res, next) => {
