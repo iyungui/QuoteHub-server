@@ -199,6 +199,50 @@ exports.getCommentsForBookStory = async (req, res, next) => {
     }
 };
 
+// bookstoryCommentController.js에 추가
+exports.updateComment = async (req, res, next) => {
+    const commentId = req.params.commentId;
+    const { content } = req.body;
+    const userId = req.user._id;
+
+    try {
+        // 댓글 존재 확인
+        const comment = await BookStoryComment.findById(commentId);
+        if (!comment) {
+            return sendError(res, 404, 'Comment not found.');
+        }
+
+        // 권한 확인 (본인 댓글만 수정 가능)
+        if (comment.userId.toString() !== userId.toString()) {
+            return sendError(res, 403, 'You do not have permission to update this comment.');
+        }
+
+        // 댓글 수정
+        const updatedComment = await BookStoryComment.findByIdAndUpdate(
+            commentId,
+            { content },
+            { new: true }
+        );
+
+        // 사용자 정보 가져오기
+        const user = await User.findById(userId, 'nickname profileImage');
+        
+        const commentResponse = {
+            ...updatedComment.toObject(),
+            userId: {
+                _id: userId,
+                nickname: user.nickname,
+                profileImage: user.profileImage
+            }
+        };
+
+        return sendSuccess(res, 200, 'Comment updated successfully.', commentResponse);
+    } catch (error) {
+        console.error('Error updating comment:', error);
+        return sendError(res, 500, 'Internal Server Error.');
+    }
+};
+
 exports.deleteComment = async (req, res, next) => {
     const commentId = req.params.commentId;
     const userId = req.user._id;
