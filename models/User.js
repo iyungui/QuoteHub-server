@@ -8,8 +8,7 @@ const userSchema = new Schema({
   profileImage: { type: String, default: "" },
   statusMessage: { type: String, default: null },
   refreshToken: { type: String, default: "" },
-  followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
-  following: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  blockedUsers: [{ type: Schema.Types.ObjectId, ref: "User" }], // 차단한 사용자 목록
 }, {
   timestamps: true // createdAt, updatedAt 자동 추가
 });

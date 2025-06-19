@@ -14,9 +14,8 @@ const userRoutes = require("./routes/userRoutes");
 const bookRoutes = require("./routes/books");
 const bookStoriesRoutes = require("./routes/bookstories");
 const bookStoriesCommentsRoutes = require("./routes/bookstoriesComments");
-const followRoutes = require("./routes/follows");
 const folderRoutes = require("./routes/Folders");
-const reportRoutes = require("./routes/reportRoutes");
+const reportRoutes = require("./routes/blockReportRoutes");
 
 // MongoDB 연결 설정
 const MONGO_URI = process.env.MONGO_URI;
@@ -48,7 +47,6 @@ app.use("/", userRoutes);
 app.use("/book", bookRoutes);
 app.use("/bookstories", bookStoriesRoutes);
 app.use("/bookstoriesComments", bookStoriesCommentsRoutes);
-app.use("/follow", followRoutes);
 app.use("/folder", folderRoutes);
 app.use("/reports", reportRoutes);
 

@@ -92,8 +92,7 @@ const appleCallback = async (req, res) => {
       nickname: user.nickname,
       profileImage: user.profileImage || "",
       statusMessage: user.statusMessage || null,
-      followers: user.followers || [],
-      following: user.following || []
+      blockedUsers: user.blockedUsers || []
     };
 
     // 간소화된 응답 데이터
@@ -243,13 +242,13 @@ const validateToken = async (req, res) => {
   }
 };
 
-// 계정 탈퇴
+// 계정 탈퇴 (Follow 모델 관련 코드 제거)
 const revokeAccount = async (req, res) => {
   const mongoose = require('mongoose');
   const BookStory = require('../models/BookStory');
   const BookStoryComment = require('../models/BookStoryComment');
   const Folder = require('../models/Folder');
-  const Follow = require('../models/Follow');
+  const Report = require('../models/Report');
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -261,24 +260,21 @@ const revokeAccount = async (req, res) => {
       return sendError(res, 404, "User not found!");
     }
 
-    // 팔로잉 및 팔로워 목록에서 사용자 제거
-    await User.updateMany(
-      { _id: { $in: user.following } },
-      { $pull: { followers: user._id } },
-      { session }
-    );
-    await User.updateMany(
-      { _id: { $in: user.followers } },
-      { $pull: { following: user._id } },
-      { session }
-    );
-
     // 사용자와 관련된 데이터 삭제
     await BookStory.deleteMany({ userId: user._id }, { session });
     await BookStoryComment.deleteMany({ userId: user._id }, { session });
     await Folder.deleteMany({ userId: user._id }, { session });
-    await Follow.deleteMany(
-      { $or: [{ follower: user._id }, { following: user._id }] },
+    
+    // 사용자가 신고한 기록과 사용자가 신고당한 기록 모두 삭제
+    await Report.deleteMany(
+      { $or: [{ reporterId: user._id }, { targetId: user._id }] },
+      { session }
+    );
+
+    // 다른 사용자들의 차단 목록에서 이 사용자 제거
+    await User.updateMany(
+      { blockedUsers: user._id },
+      { $pull: { blockedUsers: user._id } },
       { session }
     );
 

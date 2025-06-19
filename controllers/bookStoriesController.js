@@ -5,7 +5,7 @@ const BookStoryComment = require('../models/BookStoryComment');
 const User = require('../models/User');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
 const { sendSuccess, sendSuccessWithPagination, sendError } = require('../utils/responseHelper');
-
+const { applyBookStoryFilter } = require('../utils/filterHelper');
 
 // 북스토리 생성
 exports.createBookStory = async (req, res, next) => {
@@ -143,19 +143,27 @@ exports.getUserBookStoryCount = async (req, res, next) => {
     }
 };
 
-// 조회 (전체)
-// 모든 사용자의 공개된 북스토리 조회 with pagination
+// 모든 사용자의 공개된 북스토리 조회 with pagination (필터링 적용)
 exports.getAllPublicBookStories = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     try {
-        const baseQuery = BookStory.find({ isPublic: true })
+        // 기본 쿼리 조건
+        let queryCondition = { isPublic: true };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyBookStoryFilter(queryCondition, req.user);
+        }
+
+        const baseQuery = BookStory.find(queryCondition)
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
             .sort({ updatedAt: -1 });
+
         const [totalItems, bookStories] = await Promise.all([
-            BookStory.countDocuments({ isPublic: true }),
+            BookStory.countDocuments(queryCondition),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
@@ -179,20 +187,28 @@ exports.getAllPublicBookStories = async (req, res, next) => {
     }
 };
 
-// 분류 x 친구 서재에서의 공개된 북스토리 조회 with pagination
+// 분류 x 친구 서재에서의 공개된 북스토리 조회 with pagination (필터링 적용)
 exports.getFriendPublicBookStories = async (req, res, next) => {
     const friendId = req.params.friendId;
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     try {
-        const baseQuery = BookStory.find({ userId: friendId, isPublic: true })
+        // 기본 쿼리 조건
+        let queryCondition = { userId: friendId, isPublic: true };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyBookStoryFilter(queryCondition, req.user);
+        }
+
+        const baseQuery = BookStory.find(queryCondition)
             .populate('userId', 'nickname profileImage statusMessage')
             .populate('bookId')
             .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
-            BookStory.countDocuments({ userId: friendId, isPublic: true }),
+            BookStory.countDocuments(queryCondition),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
@@ -253,7 +269,6 @@ exports.getMyBookStories = async (req, res, next) => {
     }
 };
 
-// 조회(키워드)
 // 로그인한 사용자의 북스토리 키워드 검색 with pagination
 exports.getMyPublicBookStoriesWithKeyword = async (req, res, next) => {
     const userId = req.user._id;
@@ -305,7 +320,7 @@ exports.getMyPublicBookStoriesWithKeyword = async (req, res, next) => {
     }
 };
 
-// 친구 서재에서의 공개된 북스토리 키워드 검색 with pagination
+// 친구 서재에서의 공개된 북스토리 키워드 검색 with pagination (필터링 적용)
 exports.getFriendPublicBookStoriesWithKeyword = async (req, res, next) => {
     const friendId = req.params.friendId;
     const keyword = req.query.keyword;
@@ -329,11 +344,16 @@ exports.getFriendPublicBookStoriesWithKeyword = async (req, res, next) => {
         }
 
         // Define the query conditions separately
-        const queryCondition = {
+        let queryCondition = {
             userId: friendId,
             isPublic: true,
             keywords: { $regex: keyword, $options: 'i' }
         };
+
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyBookStoryFilter(queryCondition, req.user);
+        }
 
         // Use the conditions for both the count and the find queries
         const totalItemsPromise = BookStory.countDocuments(queryCondition);
@@ -368,7 +388,7 @@ exports.getFriendPublicBookStoriesWithKeyword = async (req, res, next) => {
     }
 };
 
-// 모든 사용자의 공개된 북스토리 키워드 검색 with pagination
+// 모든 사용자의 공개된 북스토리 키워드 검색 with pagination (필터링 적용)
 exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
     const keyword = req.query.keyword;
     const page = parseInt(req.query.page, 10) || 1;
@@ -379,10 +399,15 @@ exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
     }
 
     try {
-        const queryCondition = { 
+        let queryCondition = { 
             isPublic: true,
             keywords: { $regex: keyword, $options: 'i' } // case-insensitive search
         };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyBookStoryFilter(queryCondition, req.user);
+        }
         
         // 분리된 count 쿼리
         const totalItems = await BookStory.countDocuments(queryCondition);
@@ -415,6 +440,7 @@ exports.getAllPublicBookStoriesWithKeyword = async (req, res, next) => {
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
+
 exports.updateBookStory = async (req, res, next) => {
     const bookStoryId = req.params.id;
     const userId = req.user._id;
@@ -512,6 +538,7 @@ exports.updateBookStory = async (req, res, next) => {
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
+
 // 조회 (ID로 단일 북스토리 조회)
 exports.getBookStoryById = async (req, res, next) => {
     const bookStoryId = req.params.id;

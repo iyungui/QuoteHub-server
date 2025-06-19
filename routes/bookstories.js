@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const ensureAuthenticated = require('../middleware/ensureAuthenticated');
+const optionalAuthentication = require('../middleware/optionalAuthentication');
 const { 
     createBookStory,
     getUserBookStoryCount,
@@ -30,20 +31,20 @@ router.get('/count/:userId?', (req, res, next) => {
     next();
 }, getUserBookStoryCount);
 
-// 모든 공개된 BookStory 조회 with pagination
-router.get('/public', getAllPublicBookStories);     // GET /public?page=2&pageSize=10
+// 모든 공개된 BookStory 조회 with pagination (선택적 인증 적용)
+router.get('/public', optionalAuthentication, getAllPublicBookStories);
 
-// 분류 x 친구 서재에서의 공개된 BookStory 조회 with pagination
-router.get('/friend/:friendId', getFriendPublicBookStories);        // GET /friend/12345?page=3&pageSize=5
+// 분류 x 친구 서재에서의 공개된 BookStory 조회 with pagination (선택적 인증 적용)
+router.get('/friend/:friendId', optionalAuthentication, getFriendPublicBookStories);
 
 // 분류 x 내 서재의 모든 BookStory 조회 with pagination
 router.get('/my', ensureAuthenticated, getMyBookStories);
 
-// 키워드를 사용하여 모든 공개된 BookStory 조회 with pagination
-router.get('/public/search', getAllPublicBookStoriesWithKeyword);
+// 키워드를 사용하여 모든 공개된 BookStory 조회 with pagination (선택적 인증 적용)
+router.get('/public/search', optionalAuthentication, getAllPublicBookStoriesWithKeyword);
 
-// 친구 서재에서의 키워드를 사용하여 공개된 BookStory 조회 with pagination
-router.get('/friend/search/:friendId', getFriendPublicBookStoriesWithKeyword);
+// 친구 서재에서의 키워드를 사용하여 공개된 BookStory 조회 with pagination (선택적 인증 적용)
+router.get('/friend/search/:friendId', optionalAuthentication, getFriendPublicBookStoriesWithKeyword);
 
 // 내 서재에서 키워드를 사용하여 BookStory 조회 with pagination
 router.get('/my/search', ensureAuthenticated, getMyPublicBookStoriesWithKeyword);
@@ -58,6 +59,6 @@ router.get('/:id', getBookStoryById);
 router.delete('/delete/:id', ensureAuthenticated, deleteBookStory);
 
 // BookStory 다중 삭제
-router.delete('/delete-multiple', ensureAuthenticated, deleteMultipleBookStories);      // json 으로 북스토리 id 받음
+router.delete('/delete-multiple', ensureAuthenticated, deleteMultipleBookStories);
 
 module.exports = router;

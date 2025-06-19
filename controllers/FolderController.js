@@ -4,8 +4,9 @@ const BookStory = require('../models/BookStory');
 const Folder = require('../models/Folder');
 const { paginateQuery, calculateTotalPages } = require('../utils/pagination');
 const { sendSuccess, sendSuccessWithPagination, sendError } = require('../utils/responseHelper');
+const { applyBookStoryFilter, applyFolderFilter } = require('../utils/filterHelper');
 
-// 모든 사용자의 공개된 북스토리 폴더별 조회
+// 모든 사용자의 공개된 북스토리 폴더별 조회 (필터링 적용)
 exports.getAllPublicBookStoriesByFolder = async (req, res) => {
     const { folderId } = req.params;
     const page = parseInt(req.query.page, 10) || 1;
@@ -17,13 +18,21 @@ exports.getAllPublicBookStoriesByFolder = async (req, res) => {
     }
 
     try {
-        const baseQuery = BookStory.find({ folderIds: folderId, isPublic: true })
+        // 기본 쿼리 조건
+        let queryCondition = { folderIds: folderId, isPublic: true };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyBookStoryFilter(queryCondition, req.user);
+        }
+
+        const baseQuery = BookStory.find(queryCondition)
             .populate('userId', 'nickname profileImage')
             .populate('bookId')
             .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
-            BookStory.countDocuments({ folderIds: folderId, isPublic: true }),
+            BookStory.countDocuments(queryCondition),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
@@ -55,7 +64,7 @@ exports.getAllPublicBookStoriesByFolder = async (req, res) => {
     }
 };
 
-// 특정 친구의 공개된 북스토리 폴더별 조회
+// 특정 친구의 공개된 북스토리 폴더별 조회 (필터링 적용)
 exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
     const { folderId, friendId } = req.params;
     const page = parseInt(req.query.page, 10) || 1;
@@ -67,13 +76,21 @@ exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
     }
 
     try {
-        const baseQuery = BookStory.find({ userId: friendId, folderIds: folderId, isPublic: true })
+        // 기본 쿼리 조건
+        let queryCondition = { userId: friendId, folderIds: folderId, isPublic: true };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyBookStoryFilter(queryCondition, req.user);
+        }
+
+        const baseQuery = BookStory.find(queryCondition)
             .populate('userId', 'nickname profileImage')
             .populate('bookId')
             .sort({ updatedAt: -1 });
 
         const [totalItems, bookStories] = await Promise.all([
-            BookStory.countDocuments({ userId: friendId, folderIds: folderId, isPublic: true }),
+            BookStory.countDocuments(queryCondition),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
@@ -105,7 +122,7 @@ exports.getFriendPublicBookStoriesByFolder = async (req, res) => {
     }
 };
 
-// 내 서재의 북스토리 폴더별 조회
+// 내 서재의 북스토리 폴더별 조회 (필터링 불필요 - 자신의 콘텐츠)
 exports.getMyBookStoriesByFolder = async (req, res) => {
     const { folderId } = req.params;
     const userId = req.user._id; // 인증된 사용자의 ID
@@ -195,18 +212,26 @@ exports.createFolder = async (req, res) => {
     }
 };
 
-// 모든 사용자의 폴더 목록 조회 with pagination
+// 모든 사용자의 폴더 목록 조회 with pagination (필터링 적용)
 exports.getAllFolders = async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
     
     try {
-        const baseQuery = Folder.find({ isPublic: true })
+        // 기본 쿼리 조건
+        let queryCondition = { isPublic: true };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyFolderFilter(queryCondition, req.user);
+        }
+
+        const baseQuery = Folder.find(queryCondition)
             .populate('userId', 'nickname profileImage')
             .sort({ updatedAt: -1 });
 
         const [totalItems, folders] = await Promise.all([
-            Folder.countDocuments({ isPublic: true }),
+            Folder.countDocuments(queryCondition),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
@@ -224,19 +249,27 @@ exports.getAllFolders = async (req, res) => {
     }
 };
 
-// 특정 사용자의 폴더 목록 조회 with pagination
+// 특정 사용자의 폴더 목록 조회 with pagination (필터링 적용)
 exports.getUserFolders = async (req, res) => {
     const { userId } = req.params;
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 10;
 
     try {
-        const baseQuery = Folder.find({ userId: userId, isPublic: true })
+        // 기본 쿼리 조건
+        let queryCondition = { userId: userId, isPublic: true };
+        
+        // 인증된 사용자가 있으면 차단 필터 적용
+        if (req.user) {
+            queryCondition = applyFolderFilter(queryCondition, req.user);
+        }
+
+        const baseQuery = Folder.find(queryCondition)
             .populate('userId', 'nickname profileImage')
             .sort({ updatedAt: -1 });
 
         const [totalItems, folders] = await Promise.all([
-            Folder.countDocuments({ userId: userId, isPublic: true }),
+            Folder.countDocuments(queryCondition),
             paginateQuery(baseQuery, page, pageSize)
         ]);
 
@@ -254,7 +287,7 @@ exports.getUserFolders = async (req, res) => {
     }
 };
 
-// 내 폴더 목록 조회 with pagination
+// 내 폴더 목록 조회 with pagination (필터링 불필요 - 자신의 콘텐츠)
 exports.getMyFolders = async (req, res) => {
     const userId = req.user._id;
     const page = parseInt(req.query.page, 10) || 1;
