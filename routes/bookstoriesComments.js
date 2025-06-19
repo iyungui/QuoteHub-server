@@ -13,7 +13,7 @@ const {
 router.post('/', ensureAuthenticated, addCommentToBookStory);
 router.get('/:bookStoryId', getCommentsForBookStory);
 router.get('/count/:bookStoryId', getCommentCountForBookStory);
-router.put('/:commentId', ensureAuthenticated, commentController.updateComment);
+router.put('/:commentId', ensureAuthenticated, updateComment);
 router.delete('/:commentId', ensureAuthenticated, deleteComment);
 
 module.exports = router;
