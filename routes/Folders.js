@@ -12,7 +12,8 @@ const {
     getUserFolders,
     getMyFolders,
     updateFolder,
-    deleteFolder
+    deleteFolder,
+    getFolderById
 } = require('../controllers/FolderController');
 
 const upload = require('../s3Config');
@@ -44,4 +45,6 @@ router.put('/update/:folderId', ensureAuthenticated, upload.single('folderImage'
 // 폴더 삭제
 router.delete('/delete/:folderId', ensureAuthenticated, deleteFolder);
 
+// 특정 폴더 조회
+router.get('/:folderId', getFolderById);
 module.exports = router;

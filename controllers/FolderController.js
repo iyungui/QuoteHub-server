@@ -376,3 +376,27 @@ exports.deleteFolder = async (req, res) => {
         return sendError(res, 500, 'Internal Server Error.');
     }
 };
+
+// 조회 (ID로 단일 폴더 조회)
+exports.getFolderById = async (req, res) => {
+    const { folderId } = req.params;
+
+    // 유효한 ObjectId인지 확인
+    if (!mongoose.Types.ObjectId.isValid(folderId)) {
+        return sendError(res, 400, 'Invalid folder identifier.');
+    }
+
+    try {
+        const folder = await Folder.findById(folderId)
+            .populate('userId', 'nickname profileImage statusMessage')
+
+        if (!folder) {
+            return sendError(res, 404, 'Folder not found.');
+        }
+
+        return sendSuccess(res, 200, 'Folder retrieved successfully.', folder);
+    } catch (error) {
+        console.error('Error retrieving folder by ID:', error);
+        return sendError(res, 500, 'Internal Server Error.');
+    }
+}
