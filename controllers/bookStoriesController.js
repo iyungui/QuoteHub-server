@@ -40,7 +40,6 @@ exports.createBookStory = async (req, res, next) => {
             }
         } else if (Array.isArray(req.body.quotes)) {
             parsedQuotes = req.body.quotes;
-            console.log('Quotes received as array:', parsedQuotes);
         } else {
             return sendError(res, 400, 'Quotes field is required and must be an array.');
         }
@@ -460,7 +459,6 @@ exports.updateBookStory = async (req, res, next) => {
             }
         } else if (Array.isArray(req.body.quotes)) {
             parsedQuotes = req.body.quotes;
-            console.log('Quotes received as array:', parsedQuotes);
         } else {
             return sendError(res, 400, 'Quotes field is required and must be an array.');
         }
