@@ -4,6 +4,7 @@ const router = express.Router();
 
 // Controllers
 const { 
+  generateNickname,
   appleCallback, 
   checkNicknameDuplicate,
   changeNickname, 
@@ -34,6 +35,9 @@ function optionalAuthentication(req, res, next) {
 // Apple 로그인 콜백
 router.post("/auth/apple/callback", appleCallback);
 
+// 닉네임 생성 (인증)
+router.post("/auth/generate-nickname", ensureAuthenticated, generateNickname);
+
 // 닉네임 중복 체크 (GET 방식으로 변경, 선택적 인증)
 router.get("/auth/check-nickname", (req, res, next) => {
   // Authorization 헤더가 있으면 인증 미들웨어 적용
@@ -44,7 +48,7 @@ router.get("/auth/check-nickname", (req, res, next) => {
 }, checkNicknameDuplicate);
 
 // 닉네임 변경 (inputProfile 대신)
-router.post("/auth/change-nickname", ensureAuthenticated, changeNickname);
+router.put("/auth/change-nickname", ensureAuthenticated, changeNickname);
 
 // JWT 액세스 토큰 갱신
 router.post("/auth/renew-token", renewAccessToken);

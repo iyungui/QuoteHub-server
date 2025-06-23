@@ -58,6 +58,20 @@ const generateUniqueNickname = async () => {
   }
 };
 
+const generateNickname = async (req, res) => {
+  try {
+    console.log(Date().toString() + " GET /auth/generate-nickname");
+    
+    const nickname = await generateUniqueNickname();
+    
+    const responseData = { nickname: nickname };
+    return sendSuccess(res, 200, 'Unique nickname generated successfully.', responseData);
+  } catch (error) {
+    console.error("Error generating unique nickname:", error);
+    return sendError(res, 500, "An error occurred while generating nickname!");
+  }
+};
+
 // Apple 로그인 콜백 처리
 const appleCallback = async (req, res) => {
   try {
@@ -301,6 +315,7 @@ const revokeAccount = async (req, res) => {
 };
 
 module.exports = {
+  generateNickname,
   appleCallback,
   checkNicknameDuplicate,
   changeNickname,
