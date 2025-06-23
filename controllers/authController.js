@@ -68,8 +68,10 @@ const appleCallback = async (req, res) => {
     
     const idToken = jwt.decode(response.id_token);
     let user = await User.findOne({ appleId: idToken.sub });
+    let isNewUser = false;
 
     if (!user) {
+      isNewUser = true;
       const nickname = await generateUniqueNickname();
       const newUser = {
         appleId: idToken.sub,
@@ -99,7 +101,8 @@ const appleCallback = async (req, res) => {
     const responseData = {
       user: userData,
       accessToken: accessToken,
-      refreshToken: refreshToken
+      refreshToken: refreshToken,
+      isNewUser: isNewUser
     };
 
     return sendSuccess(res, 200, 'Apple authentication successful.', responseData);
