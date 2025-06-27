@@ -7,7 +7,7 @@ const userSchema = new Schema({
   nickname: { type: String, default: "", unique: true },
   profileImage: { type: String, default: "" },
   statusMessage: { type: String, default: null },
-  refreshToken: { type: String, default: "" },
+  appleRefreshToken: { type: String, default: "" },
   blockedUsers: [{ type: Schema.Types.ObjectId, ref: "User" }], // 차단한 사용자 목록
 }, {
   timestamps: true // createdAt, updatedAt 자동 추가

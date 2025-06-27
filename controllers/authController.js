@@ -15,7 +15,7 @@ const appleAuthConfig = {
   team_id: process.env.APPLE_TEAM_ID,
   key_id: process.env.APPLE_KEY_ID,
   redirect_uri: process.env.APPLE_REDIRECT_URI || "https://domain/auth/apple/callback",
-  scope: "name"
+  scope: ""
 };
 
 const auth = new AppleAuth(
@@ -78,31 +78,34 @@ const appleCallback = async (req, res) => {
     console.log(Date().toString() + " POST /auth/apple/callback");
 
     const response = await auth.accessToken(req.body.code);
-    console.log('Received code:', req.body.code);
-    
     const idToken = jwt.decode(response.id_token);
+
+    // appleId(sub)로 사용자 식별
     let user = await User.findOne({ appleId: idToken.sub });
     let isNewUser = false;
 
     if (!user) {
+      // 새 사용자라면
       isNewUser = true;
       const nickname = await generateUniqueNickname();
       const newUser = {
         appleId: idToken.sub,
-        nickname: nickname
+        nickname: nickname,
+        appleRefreshToken: response.refresh_token
       };
 
       user = new User(newUser);
       await user.save();
+      console.log(`새 사용자 생성: ${user.nickname}, appleId: ${user.appleId}`);
     } else {
-      user.refreshToken = response.refresh_token;
+      user.appleRefreshToken = response.refresh_token;
       await user.save();
+      console.log(`기존 사용자 로그인: ${user.nickname}`);
     }
 
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // 간소화된 사용자 정보 (민감한 정보 제외)
     const userData = {
       _id: user._id,
       nickname: user.nickname,
@@ -111,7 +114,6 @@ const appleCallback = async (req, res) => {
       blockedUsers: user.blockedUsers || []
     };
 
-    // 간소화된 응답 데이터
     const responseData = {
       user: userData,
       accessToken: accessToken,
@@ -171,7 +173,7 @@ const changeNickname = async (req, res) => {
       req.user._id, 
       { nickname: nickname }, 
       { new: true }
-    ).select("-refreshToken -appleId -__v");
+    ).select("-appleId -appleRefreshToken -__v");
     
     if (!updatedUser) {
       return sendError(res, 404, "User not found!");
@@ -296,15 +298,27 @@ const revokeAccount = async (req, res) => {
     );
 
     // Apple 토큰 해제
-    if (user.refreshToken) {
-      await auth.revokeToken(user.refreshToken);
+    let appleRevokeSuccess = true;
+    if (user.appleRefreshToken) {
+      console.log("Revoking Apple token for user:", user.nickname);
+      appleRevokeSuccess = await revokeAppleToken(user.appleRefreshToken);
+      if (!appleRevokeSuccess) {
+          console.warn('Apple 토큰 해제 실패 - 계속 진행');
+    } else {
+          console.log('Apple 토큰 해제 성공');
+      }
     }
 
     // 사용자 삭제
     await User.deleteOne({ _id: user._id }, { session });
 
     await session.commitTransaction();
-    return sendSuccess(res, 200, "User data and token revoked successfully!", { revoked: true });
+    
+    const message = appleRevokeSuccess 
+      ? "User data and token revoked successfully!"
+      : "User data deleted successfully, but Apple token revocation failed!";
+    
+    return sendSuccess(res, 200, message, { revoked: true });
   } catch (error) {
     await session.abortTransaction();
     console.error(error);
@@ -313,6 +327,53 @@ const revokeAccount = async (req, res) => {
     session.endSession();
   }
 };
+
+const revokeAppleToken = async (appleRefreshToken) => {
+  try {
+    // 1. Client Secret 생성
+    const clientSecret = jwt.sign(
+      {
+        iss: process.env.APPLE_TEAM_ID,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 1200, // 20분
+        aud: 'https://appleid.apple.com',
+        sub: process.env.APPLE_CLIENT_ID
+      },
+      process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      {
+        algorithm: 'ES256',
+        header: {
+          alg: 'ES256',
+          kid: process.env.APPLE_KEY_ID
+        }
+      }
+    );
+
+    // 2. Apple 토큰 해제 요청
+    const revokeResponse = await axios.post(
+      'https://appleid.apple.com/auth/revoke',
+      new URLSearchParams({
+        client_id: process.env.APPLE_CLIENT_ID,
+        client_secret: clientSecret,
+        token: appleRefreshToken,
+        token_type_hint: 'refresh_token'
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        timeout: 10000 // 10초 타임아웃
+      }
+    );
+
+    // 3. 200 응답이면 성공 (response body는 비어있음)
+    return revokeResponse.status === 200;
+  } catch (error) {
+    console.error('Apple token revoke 실패:', error.message);
+    return false;
+  }
+};
+
 
 module.exports = {
   generateNickname,

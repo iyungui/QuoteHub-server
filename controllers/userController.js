@@ -20,7 +20,7 @@ const getUserProfile = async (req, res) => {
     }
 
     const user = await User.findOne(query).select(
-      "-refreshToken -appleId -__v"
+      "-appleId -appleRefreshToken -__v"
     );
     
     if (user) {
@@ -68,7 +68,7 @@ const updateUserProfile = async (req, res) => {
       req.user._id,
       updatedData,
       { new: true }
-    ).select("-refreshToken -appleId -__v -followers -following");
+    ).select("-appleId -appleRefreshToken -__v");
     
     return sendSuccess(res, 200, "User profile updated successfully.", updatedUser);
   } catch (error) {
@@ -83,7 +83,7 @@ const getUserList = async (req, res) => {
     const users = await User.find()
       .sort({ _id: -1 })
       .limit(10)
-      .select("-appleId -refreshToken");
+      .select("-appleId -appleRefreshToken -__v");
 
     return sendSuccess(res, 200, "User list retrieved successfully.", users);
   } catch (error) {

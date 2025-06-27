@@ -26,7 +26,7 @@ const optionalAuthentication = async (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         
         // 사용자 정보 조회 (차단 목록 포함)
-        const user = await User.findById(decoded._id).select('-refreshToken -appleId');
+        const user = await User.findById(decoded._id).select('-appleRefreshToken -appleId');
         
         if (user) {
             req.user = user;
