@@ -26,7 +26,7 @@ const auth = new AppleAuth(
 
 // JWT 토큰 생성 함수
 const generateAccessToken = (user) => {
-  return jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: "1h" });
 };
 
 const generateRefreshToken = (user) => {
