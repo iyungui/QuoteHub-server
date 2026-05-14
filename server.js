@@ -6,6 +6,10 @@ const http = require("http");
 const helmet = require("helmet");
 require('dotenv').config();
 
+const { getCorsOptions, validateRequiredEnv } = require("./config/env");
+
+validateRequiredEnv();
+
 const app = express();
 const server = http.createServer(app);
 
@@ -31,15 +35,24 @@ mongoose
 
 // 서버 보안 모듈
 app.use(helmet());
+app.set("trust proxy", 1);
 
 // AWS health check
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
+app.get("/health/ready", (req, res) => {
+  if (mongoose.connection.readyState === 1) {
+    return res.status(200).json({ status: "ok", database: "connected" });
+  }
+
+  return res.status(503).json({ status: "error", database: "disconnected" });
+});
+
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors(getCorsOptions()));
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Routes

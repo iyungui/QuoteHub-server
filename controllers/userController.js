@@ -80,6 +80,10 @@ const updateUserProfile = async (req, res) => {
 // for testing purposes, get a list of users
 const getUserList = async (req, res) => {
   try {
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_USER_LIST !== "true") {
+      return sendError(res, 403, "User list is disabled in production.");
+    }
+
     const users = await User.find()
       .sort({ _id: -1 })
       .limit(10)

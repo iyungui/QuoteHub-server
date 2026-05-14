@@ -11,8 +11,8 @@ const {
 } = require('../controllers/BookStoryCommentController'); // 대문자 B로 변경
 
 router.post('/', ensureAuthenticated, addCommentToBookStory);
-router.get('/:bookStoryId', getCommentsForBookStory);
 router.get('/count/:bookStoryId', getCommentCountForBookStory);
+router.get('/:bookStoryId', getCommentsForBookStory);
 router.put('/:commentId', ensureAuthenticated, updateComment);
 router.delete('/:commentId', ensureAuthenticated, deleteComment);
 
