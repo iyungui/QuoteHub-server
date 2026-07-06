@@ -4,6 +4,7 @@ const axios = require("axios");
 const AppleAuth = require("apple-auth");
 const User = require("../models/User");
 const { sendSuccess, sendError } = require('../utils/responseHelper');
+const { generateNicknameCandidate } = require("../utils/nicknameGenerator");
 
 // JWT 비밀 키
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
@@ -33,29 +34,28 @@ const generateRefreshToken = (user) => {
   return jwt.sign({ _id: user._id }, REFRESH_TOKEN_SECRET, { expiresIn: "14d" });
 };
 
-// 고유한 닉네임 생성 함수
+// 고유한 닉네임 생성 함수 (로컬 생성기 사용, 외부 API 의존 없음)
 const generateUniqueNickname = async () => {
-  try {
-    for (let attempts = 0; attempts < 10; attempts++) {
-      const response = await axios.get("https://nickname.hwanmoo.kr/", {
-        params: {
-          format: "json",
-          count: 1,
-        },
-      });
-
-      const nickname = response.data.words[0];
-      const existingUser = await User.findOne({ nickname: nickname });
-
-      if (!existingUser) {
-        return nickname;
-      }
+  // 1. 단어 조합만으로 고유 닉네임 시도
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const nickname = generateNicknameCandidate();
+    const existingUser = await User.findOne({ nickname });
+    if (!existingUser) {
+      return nickname;
     }
-    throw new Error("Unable to generate unique nickname after multiple attempts");
-  } catch (error) {
-    console.error("Error in generateUniqueNickname:", error);
-    throw error;
   }
+
+  // 2. 조합이 계속 겹치면 4자리 숫자 접미사로 고유성 보장
+  for (let attempts = 0; attempts < 50; attempts++) {
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const nickname = `${generateNicknameCandidate()}${suffix}`;
+    const existingUser = await User.findOne({ nickname });
+    if (!existingUser) {
+      return nickname;
+    }
+  }
+
+  throw new Error("Unable to generate unique nickname after multiple attempts");
 };
 
 const generateNickname = async (req, res) => {
