@@ -1,0 +1,10 @@
+name = "quotehub-api-proxy"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# custom_domain = true 로 지정하면 wrangler가 배포 시
+# DNS 레코드와 TLS 인증서를 자동으로 만들어준다.
+# (quotehub-api 는 iyungui.dev의 한 단계 서브도메인 → 무료 Universal SSL 커버)
+routes = [
+  { pattern = "quotehub-api.iyungui.dev", custom_domain = true }
+]

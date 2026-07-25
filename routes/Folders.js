@@ -14,7 +14,7 @@ const {
     updateFolder,
     deleteFolder,
     getFolderById
-} = require('../controllers/FolderController');
+} = require('../controllers/folderController');
 
 const upload = require('../s3Config');
 

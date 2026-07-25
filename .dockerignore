@@ -1,0 +1,21 @@
+node_modules
+npm-debug.log
+
+# 시크릿은 절대 이미지에 포함하지 않는다. Cloud Run 환경변수로 주입된다.
+.env
+.env.*
+
+.git
+.gitignore
+.DS_Store
+
+logs
+*.log
+
+# 다른 배포 방식의 설정 파일 (Cloud Run에서는 불필요)
+render.yaml
+ecosystem.config.js
+setup-server.sh
+
+*.md
+myapp.zip
