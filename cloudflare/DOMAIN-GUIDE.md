@@ -140,8 +140,8 @@ QuoteHub와 똑같은 패턴. `cloudflare/` 폴더의 Worker를 복제해서 쓰
 | 서브도메인 | 용도 | 연결 대상 | 설정 방식 |
 |---|---|---|---|
 | `quotehub-api.iyungui.dev` | 문장모아 백엔드 | Cloud Run (via Worker) | Worker (`cloudflare/`) |
+| `goodripple.iyungui.dev` | 선한물결 블로그 (미담 큐레이션) | GitHub Pages (`iyungui/goodripple`) | CNAME → `iyungui.github.io` (Proxied, SSL Full) |
 | _(예정)_ `iyungui.dev` | 개인 랜딩 | — | — |
-| _(예정)_ `blog.iyungui.dev` | 블로그 | — | — |
 
 ---
 
